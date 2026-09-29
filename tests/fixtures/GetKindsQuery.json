@@ -1,0 +1,62 @@
+{
+  "data": {
+    "kinds": [
+      {
+        "id": "8",
+        "name": "AUDIOBOOK",
+        "singular": "audiobook",
+        "plural": "Audiobooks",
+        "enabled": true,
+        "__typename": "Kind"
+      },
+      {
+        "id": "7",
+        "name": "MOVIE",
+        "singular": "movie",
+        "plural": "Movies",
+        "enabled": true,
+        "__typename": "Kind"
+      },
+      {
+        "id": "6",
+        "name": "MUSIC",
+        "singular": "music",
+        "plural": "Music",
+        "enabled": true,
+        "__typename": "Kind"
+      },
+      {
+        "id": "10",
+        "name": "COMIC",
+        "singular": "comic",
+        "plural": "Comics",
+        "enabled": true,
+        "__typename": "Kind"
+      },
+      {
+        "id": "5",
+        "name": "EBOOK",
+        "singular": "ebook",
+        "plural": "Ebooks",
+        "enabled": true,
+        "__typename": "Kind"
+      },
+      {
+        "id": "9",
+        "name": "TELEVISION",
+        "singular": "television",
+        "plural": "Television",
+        "enabled": true,
+        "__typename": "Kind"
+      },
+      {
+        "id": "11",
+        "name": "BINGEPASS",
+        "singular": "BingePass",
+        "plural": "BingePasses",
+        "enabled": true,
+        "__typename": "Kind"
+      }
+    ]
+  }
+}

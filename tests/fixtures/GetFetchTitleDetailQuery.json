@@ -1,0 +1,67 @@
+{
+  "data": {
+    "title": {
+      "id": "2000001",
+      "title": "Sample Movie",
+      "artKey": "smp_samplemovie",
+      "kind": {
+        "name": "MOVIE",
+        "id": "7",
+        "singular": "movie",
+        "plural": "Movies"
+      },
+      "synopsis": "Synopsis for the sample movie.",
+      "year": "2023",
+      "seconds": 5820,
+      "rating": "NRA",
+      "status": "BORROWED",
+      "licenseType": "PPU",
+      "lendingMessage": "This title is available for 3 days after you borrow it.",
+      "mediaKey": "smp_samplemovie",
+      "releaseDate": "2023-07-11T00:00:00.000Z",
+      "genres": [
+        {
+          "ancestors": [],
+          "id": "320711872",
+          "name": "History"
+        }
+      ],
+      "primaryArtist": {
+        "name": "Sample Artist",
+        "id": "3000001"
+      },
+      "directors": [
+        {
+          "name": "Sample Director",
+          "id": "3000002"
+        }
+      ],
+      "actors": [],
+      "circulation": {
+        "borrowedDate": "2029-12-29T00:00:00.000Z",
+        "dueDate": "2030-01-01T00:00:00.000Z",
+        "id": "900000001",
+        "isRenewable": false,
+        "licenseType": "PPU",
+        "maxDue": "2030-01-01T00:00:00.000Z",
+        "patron": {
+          "id": "800000001"
+        }
+      },
+      "episodes": null,
+      "playbackPosition": null,
+      "overlay": null,
+      "__typename": "Title",
+      "series": null,
+      "patronRating": {
+        "stars": 4,
+        "__typename": "PatronRating"
+      },
+      "titleRating": {
+        "totalCount": 12,
+        "weightedAverage": 3.5,
+        "__typename": "TitleRating"
+      }
+    }
+  }
+}

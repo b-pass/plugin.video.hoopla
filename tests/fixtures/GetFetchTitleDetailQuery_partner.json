@@ -1,0 +1,19 @@
+{
+  "data": {
+    "title": {
+      "id": "15935096",
+      "title": "Hallmark+ BingePass",
+      "kind": {
+        "name": "BINGEPASS"
+      },
+      "status": "BORROW",
+      "licenseType": "PPU",
+      "lendingMessage": "Get 7 days of unlimited access to our partner's platform by borrowing this hoopla BingePass!",
+      "bingePassType": "EXTERNAL",
+      "externalCatalogUrl": "https://binge-pass.hoopladigital.com/titles/15935096",
+      "circulation": null,
+      "bundledContent": null,
+      "__typename": "Title"
+    }
+  }
+}

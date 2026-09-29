@@ -1,0 +1,18 @@
+{
+  "data": {
+    "genres": [
+      {
+        "isParent": true,
+        "id": "100",
+        "name": "Action",
+        "__typename": "Genre"
+      },
+      {
+        "isParent": false,
+        "id": "101",
+        "name": "Documentary",
+        "__typename": "Genre"
+      }
+    ]
+  }
+}

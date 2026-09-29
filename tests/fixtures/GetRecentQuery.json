@@ -1,0 +1,65 @@
+{
+  "data": {
+    "recent": {
+      "hits": [
+        {
+          "id": "20237952",
+          "titleId": "20237952",
+          "title": "The Birthday Party",
+          "artKey": "qvr_qd1000488",
+          "kind": {
+            "name": "MOVIE",
+            "__typename": "Kind"
+          },
+          "licenseType": "PPU",
+          "overlay": null,
+          "parentalAdvisory": false,
+          "primaryArtist": {
+            "name": "Willem Dafoe",
+            "__typename": "Artist"
+          },
+          "releaseDate": "2026-09-27T00:00:00.000Z",
+          "status": "BORROW",
+          "subtitle": null,
+          "synopsis": "Marcos Timoleon, an Aristotle Onassis-like tycoon, is throwing a lavish, extravagant birthday party for Sofia, his daughter and sole heiress, on his exclusive private island. The party is a perfect excuse for various people in his life to approach him with their own agendas.",
+          "series": null,
+          "titleRating": {
+            "totalCount": 4,
+            "weightedAverage": 2.3,
+            "__typename": "TitleRating"
+          },
+          "__typename": "Title"
+        },
+        {
+          "id": "20165550",
+          "titleId": "20165550",
+          "title": "The Living Tree",
+          "artKey": "buf_thelivingtree",
+          "kind": {
+            "name": "MOVIE",
+            "__typename": "Kind"
+          },
+          "licenseType": "PPU",
+          "overlay": null,
+          "parentalAdvisory": false,
+          "primaryArtist": {
+            "name": "Brey Noelle",
+            "__typename": "Artist"
+          },
+          "releaseDate": "2026-09-25T00:00:00.000Z",
+          "status": "BORROW",
+          "subtitle": null,
+          "synopsis": "On their honeymoon in a treehouse, Noah and Annabelle ignore a local's warning. They're soon pulled into a AI-run experiment by a tech giant. As the challenges escalate, secrets emerge-and survival becomes the only thing that matters.",
+          "series": null,
+          "titleRating": {
+            "totalCount": null,
+            "weightedAverage": null,
+            "__typename": "TitleRating"
+          },
+          "__typename": "Title"
+        }
+      ],
+      "__typename": "SearchResult"
+    }
+  }
+}

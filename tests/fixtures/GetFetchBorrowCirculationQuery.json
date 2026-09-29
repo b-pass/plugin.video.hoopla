@@ -1,0 +1,16 @@
+{
+  "data": {
+    "title": {
+      "id": "19268061",
+      "circulation": {
+        "id": "900000009",
+        "patron": {
+          "id": "800000001",
+          "__typename": "Patron"
+        },
+        "__typename": "Circulation"
+      },
+      "__typename": "Title"
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "data": {
+    "library": [],
+    "featured": [
+      {
+        "id": "34850",
+        "name": "New Movie Releases | 2026",
+        "__typename": "Collection"
+      },
+      {
+        "id": "19843",
+        "name": "New to hoopla",
+        "__typename": "Collection"
+      }
+    ],
+    "all": [
+      {
+        "id": "34850",
+        "name": "New Movie Releases | 2026",
+        "__typename": "Collection"
+      },
+      {
+        "id": "16279",
+        "name": "Action-Packed Movies",
+        "__typename": "Collection"
+      },
+      {
+        "id": "75973",
+        "name": "All Things British | Movies & TV",
+        "__typename": "Collection"
+      }
+    ]
+  }
+}

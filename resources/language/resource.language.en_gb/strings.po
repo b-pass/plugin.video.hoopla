@@ -1,0 +1,20 @@
+# Kodi Media Center language file
+# Addon Name: Hoopla
+# Addon id: plugin.video.hoopla
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: en_GB\n"
+
+msgctxt "#30001"
+msgid "Playback"
+msgstr ""
+
+msgctxt "#30002"
+msgid "Play even if the Widevine check fails"
+msgstr ""
+
+msgctxt "#30003"
+msgid "Skip the warning when InputStream Helper can't confirm Widevine is installed, e.g. on devices that provide Widevine some other way."
+msgstr ""

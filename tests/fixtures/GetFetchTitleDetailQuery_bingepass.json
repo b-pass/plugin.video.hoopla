@@ -1,0 +1,112 @@
+{
+  "data": {
+    "title": {
+      "id": "19268061",
+      "title": "Mister Rogers' Neighborhood BingePass",
+      "kind": {
+        "name": "BINGEPASS"
+      },
+      "status": "BORROW",
+      "licenseType": "PPU",
+      "lendingMessage": "This title is available for 7 days after you borrow it. This title is available for streaming and downloading (mobile devices only).",
+      "bingePassType": "INTERNAL",
+      "externalCatalogUrl": null,
+      "circulation": null,
+      "bundledContent": [
+        {
+          "id": "19269734",
+          "artKey": "pbs_mrn1671d",
+          "circulation": null,
+          "episode": 1,
+          "episodeTitle": "01-All About Hats",
+          "kind": {
+            "name": "TELEVISION",
+            "singular": "television"
+          },
+          "mediaKey": "pbs_mrn1671d",
+          "rating": "TVY",
+          "season": "26",
+          "seconds": 1800,
+          "series": {
+            "name": "Mister Rogers' Neighborhood"
+          },
+          "seriesNumberLabel": null,
+          "synopsis": "Mister Rogers and Mr. McFeely ride a bus and see many people wearing hats. Mayor Maggie is wearing a three-cornered hat and provides one for Queen Sara and King Friday as well. King Friday declares that everyone in the Neighborhood will be required to wear these hats.",
+          "title": "Mister Rogers' Neighborhood - Season 26",
+          "titleId": "19269734",
+          "year": "1994"
+        },
+        {
+          "id": "19271764",
+          "artKey": "pbs_mrn1672d",
+          "circulation": null,
+          "episode": 2,
+          "episodeTitle": "02-A Hat for Bob Dog",
+          "kind": {
+            "name": "TELEVISION",
+            "singular": "television"
+          },
+          "mediaKey": "pbs_mrn1672d",
+          "rating": "TVY",
+          "season": "26",
+          "seconds": 1800,
+          "series": {
+            "name": "Mister Rogers' Neighborhood"
+          },
+          "seriesNumberLabel": null,
+          "synopsis": "Maryiln Barnett stops by for some exercise. Bob Trow arrives to pick up the Bob Dog costume and joins in for the final exercise. By King Friday's orders, Handyman Negri provides both royal birds with a three-cornered hat. Quickly finding a hat to fit Bob Dog, however, proves to be a bit more difficult.",
+          "title": "Mister Rogers' Neighborhood - Season 26",
+          "titleId": "19269734",
+          "year": "1994"
+        },
+        {
+          "id": "19269741",
+          "artKey": "pbs_mrn1641d",
+          "circulation": null,
+          "episode": 1,
+          "episodeTitle": "01-A Portrait of Mr. McFeely",
+          "kind": {
+            "name": "TELEVISION",
+            "singular": "television"
+          },
+          "mediaKey": "pbs_mrn1641d",
+          "rating": "TVY",
+          "season": "24",
+          "seconds": 1800,
+          "series": {
+            "name": "Mister Rogers' Neighborhood"
+          },
+          "seriesNumberLabel": null,
+          "synopsis": "Mr. McFeely invites Mister Rogers to the Neighborhood art center where Bob Trow is working on a portrait of Mr. McFeely. Robert Troll is painting a portrait of King Friday and Mimus Polyglottos. King Friday asks Lady Aberlin to show Robert Troll's work to all of the neighbors and have them copy it for themselves. Lady Aberlin explains that art comes from within each person.",
+          "title": "Mister Rogers' Neighborhood - Season 24",
+          "titleId": "19269741",
+          "year": "1991"
+        },
+        {
+          "id": "19271725",
+          "artKey": "pbs_mrn1642d",
+          "circulation": null,
+          "episode": 2,
+          "episodeTitle": "02-Art and the Spanish Singing Bakers",
+          "kind": {
+            "name": "TELEVISION",
+            "singular": "television"
+          },
+          "mediaKey": "pbs_mrn1642d",
+          "rating": "TVY",
+          "season": "24",
+          "seconds": 1800,
+          "series": {
+            "name": "Mister Rogers' Neighborhood"
+          },
+          "seriesNumberLabel": null,
+          "synopsis": "Mister Rogers shows a \"Neighborhood\" flip book followed by paintings by Picasso. He visits Brockett's Bakery to watch Spanish musicians and is inspired to make a rain stick. Lady Aberlin paints King Friday XIII's portrait. X the Owl and Henrietta have made a flip book featuring a dancing King Friday. Lady Elaine gives a painting by Picasso as her portrait of King Friday.",
+          "title": "Mister Rogers' Neighborhood - Season 24",
+          "titleId": "19269741",
+          "year": "1991"
+        }
+      ],
+      "__typename": "Title"
+    }
+  }
+}

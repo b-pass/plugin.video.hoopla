@@ -1,0 +1,19 @@
+[
+  {
+    "id": 2000001,
+    "kind": {
+      "id": 7,
+      "name": "MOVIE"
+    },
+    "title": "Sample Movie",
+    "status": "BORROWED",
+    "contents": [
+      {
+        "id": 2000001,
+        "mediaKey": "smp_samplemovie",
+        "circId": 900000001,
+        "due": 1893456000000
+      }
+    ]
+  }
+]

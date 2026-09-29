@@ -1,0 +1,13 @@
+{
+  "data": {
+    "remainingBorrows": {
+      "borrowsRemaining": 5,
+      "borrowsRemainingMessage": "You can borrow 5 more titles this month.",
+      "flexBorrowsRemaining": null,
+      "flexBorrowsRemainingMessage": null,
+      "instantBorrowsRemaining": 5,
+      "instantBorrowsRemainingMessage": "You have 5 Instant Borrows remaining this month.",
+      "__typename": "RemainingBorrowsStatus"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "data": {
+    "genre": {
+      "id": "318082608",
+      "name": "History",
+      "isParent": false,
+      "children": [],
+      "kind": {
+        "name": "AUDIOBOOK",
+        "plural": "Audiobooks",
+        "__typename": "Kind"
+      },
+      "ancestors": [],
+      "__typename": "Genre"
+    }
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "data": {
+    "search": {
+      "found": 31,
+      "hits": [
+        {
+          "id": "15128209",
+          "titleId": "15128209",
+          "title": "Logan Lucky",
+          "artKey": "bls_338327",
+          "kind": {
+            "name": "MOVIE",
+            "__typename": "Kind"
+          },
+          "licenseType": "PPU",
+          "overlay": null,
+          "parentalAdvisory": false,
+          "primaryArtist": {
+            "name": "Channing Tatum",
+            "__typename": "Artist"
+          },
+          "releaseDate": "2022-05-16T00:00:00.000Z",
+          "status": "BORROW",
+          "subtitle": null,
+          "synopsis": "Trying to reverse a family curse, brothers Jimmy (Channing Tatum) and Clyde Logan (Adam Driver) set out to execute an elaborate robbery during the legendary Coca-Cola 600 race at the Charlotte Motor Speedway. The production shot at Charlotte Motor Speedway during the actual NASCAR Coca-Cola 600 and the Bank of America 500, as well as at Atlanta Motor Speedway. In a fun twist, six NASCAR stars pop up in non-driver cameo roles in the film.",
+          "series": null,
+          "titleRating": {
+            "totalCount": 580,
+            "weightedAverage": 4.4,
+            "__typename": "TitleRating"
+          },
+          "patronRating": {
+            "stars": null,
+            "__typename": "PatronRating"
+          },
+          "__typename": "Title"
+        },
+        {
+          "id": "15128178",
+          "titleId": "15128178",
+          "title": "Papillon",
+          "artKey": "bls_534211",
+          "kind": {
+            "name": "MOVIE",
+            "__typename": "Kind"
+          },
+          "licenseType": "PPU",
+          "overlay": null,
+          "parentalAdvisory": false,
+          "primaryArtist": {
+            "name": "Charlie Hunnam",
+            "__typename": "Artist"
+          },
+          "releaseDate": "2022-05-16T00:00:00.000Z",
+          "status": "BORROW",
+          "subtitle": null,
+          "synopsis": "Based on the international best-selling autobiographic books \"Papillon\" and \"Banco\", the film follows the epic story of Henri \"Papillon\" Charrière (Charlie Hunnam), a safecracker from the Parisian underworld who is framed for murder and condemned to life in the notorious penal colony on Devil's Island. Determined to regain his freedom, Papillon forms an unlikely alliance with a convicted counterfeiter Louis Dega (Rami Malek), who in exchange for protection, agrees to finance Papillon's escape.",
+          "series": null,
+          "titleRating": {
+            "totalCount": 153,
+            "weightedAverage": 4.3,
+            "__typename": "TitleRating"
+          },
+          "patronRating": {
+            "stars": null,
+            "__typename": "PatronRating"
+          },
+          "__typename": "Title"
+        },
+        {
+          "id": "15995824",
+          "titleId": "15995824",
+          "title": "The Wrath of Becky",
+          "artKey": "qvr_qd1000253",
+          "kind": {
+            "name": "MOVIE",
+            "__typename": "Kind"
+          },
+          "licenseType": "PPU",
+          "overlay": null,
+          "parentalAdvisory": false,
+          "primaryArtist": {
+            "name": "Seann William Scott",
+            "__typename": "Artist"
+          },
+          "releaseDate": "2023-06-30T00:00:00.000Z",
+          "status": "BORROW",
+          "subtitle": null,
+          "synopsis": "After living off the grid for two years, Becky finds herself up against the leader of a fascist organization, on the eve of an organized attack.",
+          "series": {
+            "id": "16847785987",
+            "name": "Becky",
+            "__typename": "Series"
+          },
+          "titleRating": {
+            "totalCount": 567,
+            "weightedAverage": 4.1,
+            "__typename": "TitleRating"
+          },
+          "patronRating": {
+            "stars": null,
+            "__typename": "PatronRating"
+          },
+          "__typename": "Title"
+        }
+      ],
+      "__typename": "SearchResult"
+    }
+  }
+}

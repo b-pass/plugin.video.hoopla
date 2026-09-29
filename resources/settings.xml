@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<settings version="1">
+    <section id="plugin.video.hoopla">
+        <category id="account" label="16000" help="">
+            <group id="login">
+                <setting id="username" type="string" label="1048" help="">
+                    <level>0</level>
+                    <default/>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string">
+                        <heading>1048</heading>
+                    </control>
+                </setting>
+                <setting id="password" type="string" label="733" help="">
+                    <level>0</level>
+                    <default/>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <dependencies>
+                        <dependency type="enable">
+                            <condition operator="!is" setting="username"></condition>
+                        </dependency>
+                    </dependencies>
+                    <control type="edit" format="string">
+                        <heading>733</heading>
+                        <hidden>true</hidden>
+                    </control>
+                </setting>
+            </group>
+            <group id="playback" label="30001">
+                <setting id="force_play" type="boolean" label="30002" help="30003">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle"/>
+                </setting>
+            </group>
+            <group id="internal">
+                <!-- Written by the addon: the Hoopla session token, and a random per-install device id. -->
+                <setting id="authorization" type="string" help="">
+                    <level>4</level>
+                    <default/>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <visible>false</visible>
+                    <control type="edit" format="string"/>
+                </setting>
+                <setting id="device_id" type="string" help="">
+                    <level>4</level>
+                    <default/>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <visible>false</visible>
+                    <control type="edit" format="string"/>
+                </setting>
+            </group>
+        </category>
+    </section>
+</settings>

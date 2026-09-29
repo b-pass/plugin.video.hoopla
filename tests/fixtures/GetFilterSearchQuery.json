@@ -1,0 +1,76 @@
+{
+  "data": {
+    "search": {
+      "found": 87,
+      "hits": [
+        {
+          "id": "17661719",
+          "artKey": "pbs_kenburnsbp0106",
+          "kind": {
+            "name": "BINGEPASS",
+            "__typename": "Kind"
+          },
+          "licenseType": "PPU",
+          "overlay": null,
+          "parentalAdvisory": false,
+          "primaryArtist": {
+            "name": "Various Actors",
+            "__typename": "Artist"
+          },
+          "releaseDate": "2024-12-12T00:00:00.000Z",
+          "status": "BORROW",
+          "subtitle": null,
+          "synopsis": "Explore America’s Greatest Stories with Ken Burns.\nFor more than 40 years, Ken Burns and his collaborators have created some of the most acclaimed historical documentaries ever made. Through this impressive collection, discover things you never knew about the people and events that molded our history. Enjoy unlimited access to The Civil War, Jazz, National Parks, and many more for seven days with a single borrow.",
+          "title": "Ken Burns Collection BingePass",
+          "titleId": "17661719",
+          "__typename": "Title"
+        },
+        {
+          "id": "18660385",
+          "artKey": "jun_radiumgirls",
+          "kind": {
+            "name": "MOVIE",
+            "__typename": "Kind"
+          },
+          "licenseType": "PPU",
+          "overlay": null,
+          "parentalAdvisory": false,
+          "primaryArtist": {
+            "name": "Joey King",
+            "__typename": "Artist"
+          },
+          "releaseDate": "2025-09-01T00:00:00.000Z",
+          "status": "BORROW",
+          "subtitle": null,
+          "synopsis": "Based on a true story, Bessie and Josephine are sisters employed at American Radium, where they paint glow-in-the-dark watch dials at a New Jersey factory. They take pride in their jobs and Bessie dreams of becoming an actress in the new motion picture industry and having crowds of adoring fans. However, when her younger sister Josephine becomes ill, the sisters uncover the unknown truth about radium: it's a deadly poison. With Jo's life dwindling, just as those of her former colleagues have, Bessie becomes determined to bring the horrors of radium poisoning to light and take down American Radium and fights not only for her sister, but also for the rest of the women around her; she becomes a powerful advocate as she risks everything to stand up to the corporation that provides her family's livelihood. Starring Emmy and Golden Globe nominee Joey King (\"The Act,\", \"The Kissing Booth\") and Abby Quinn (\"Mad About You\" reboot, \"Little Women\"), Radium Girls is a celebration of everyday women finding their strength in the unlikeliest of circumstances.",
+          "title": "Radium Girls",
+          "titleId": "18660385",
+          "__typename": "Title"
+        },
+        {
+          "id": "16025815",
+          "artKey": "ale_ds121758",
+          "kind": {
+            "name": "MOVIE",
+            "__typename": "Kind"
+          },
+          "licenseType": "PPU",
+          "overlay": null,
+          "parentalAdvisory": false,
+          "primaryArtist": {
+            "name": "J. Robert Oppenheimer",
+            "__typename": "Artist"
+          },
+          "releaseDate": "2023-07-11T00:00:00.000Z",
+          "status": "BORROW",
+          "subtitle": null,
+          "synopsis": "The documentary covers Oppenheimer's contribution to nuclear physics as a professor and leader of the Los Alamos Laboratory.",
+          "title": "Oppenheimer: The Real Story",
+          "titleId": "16025815",
+          "__typename": "Title"
+        }
+      ],
+      "__typename": "SearchResult"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "message": "You can now enjoy this title through Tuesday, January 1.  You can stream it to your browser, or download it for offline viewing using our Amazon, Android, or iOS mobile apps.",
+  "titles": [
+    {
+      "id": 2000001,
+      "kind": {
+        "id": 7,
+        "name": "MOVIE",
+        "enabled": true,
+        "singular": "movie",
+        "plural": "Movies"
+      },
+      "title": "Sample Movie",
+      "artKey": "smp_samplemovie",
+      "year": 2023,
+      "contents": [
+        {
+          "id": 2000001,
+          "title": "Sample Movie",
+          "mediaKey": "smp_samplemovie",
+          "artKey": "smp_samplemovie",
+          "circId": 900000001,
+          "due": 1893456000000,
+          "seconds": 5820,
+          "playable": true,
+          "subtitles": [
+            {
+              "id": 1,
+              "cc": true,
+              "format": "SRT",
+              "language": "ENGLISH",
+              "iso639": "en",
+              "mediaKey": "smp_samplemovie",
+              "url": "http://subtitle.hoopladigital.com/smp_samplemovie/smp_samplemovie-en-cc.srt"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

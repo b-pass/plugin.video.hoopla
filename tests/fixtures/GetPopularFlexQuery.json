@@ -1,0 +1,9 @@
+{
+  "data": {
+    "popularFlex": {
+      "algorithm": "ElasticSearch-V1",
+      "hits": [],
+      "__typename": "SearchResult"
+    }
+  }
+}

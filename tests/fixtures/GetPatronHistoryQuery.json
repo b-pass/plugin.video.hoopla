@@ -1,0 +1,49 @@
+{
+  "data": {
+    "history": [
+      {
+        "id": "900000003",
+        "borrowedDate": "2029-12-01T12:00:00.000Z",
+        "episode": {
+          "title": "Pilot",
+          "__typename": "Episode"
+        },
+        "title": {
+          "id": "2000002",
+          "titleId": "2000002",
+          "title": "Sample Show - Season 1",
+          "artKey": "smp_sampleshow",
+          "kind": {
+            "name": "TELEVISION",
+            "__typename": "Kind"
+          },
+          "licenseType": "PPU",
+          "overlay": null,
+          "parentalAdvisory": false,
+          "primaryArtist": {
+            "name": "Sample Artist",
+            "__typename": "Artist"
+          },
+          "releaseDate": "2020-01-01T00:00:00.000Z",
+          "status": "NONE",
+          "subtitle": null,
+          "synopsis": "Synopsis for the sample show.",
+          "series": {
+            "id": "4000001",
+            "name": "Sample Show",
+            "__typename": "Series"
+          },
+          "titleRating": {
+            "totalCount": 10,
+            "weightedAverage": 4.2,
+            "__typename": "TitleRating"
+          },
+          "patronRating": null,
+          "__typename": "Title"
+        },
+        "licenseType": "PPU",
+        "__typename": "Circulation"
+      }
+    ]
+  }
+}

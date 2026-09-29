@@ -1,0 +1,75 @@
+{
+  "data": {
+    "popular": {
+      "algorithm": "ElasticSearch-V1",
+      "hits": [
+        {
+          "id": "11597912",
+          "titleId": "11597912",
+          "title": "The Pigeon Finds A Hot Dog!",
+          "artKey": "wws_9781338103045",
+          "kind": {
+            "name": "MOVIE",
+            "__typename": "Kind"
+          },
+          "licenseType": "PPU",
+          "overlay": null,
+          "parentalAdvisory": false,
+          "primaryArtist": {
+            "name": "Mo Willems",
+            "__typename": "Artist"
+          },
+          "releaseDate": "2016-02-01T00:00:00.000Z",
+          "status": "BORROW",
+          "subtitle": null,
+          "synopsis": "When Pigeon finds a delicious hot dog, he can't wait to devour it. But then along comes a sly duckling who wants a bite. Who will be the more clever bird?",
+          "series": {
+            "id": "2242035854",
+            "name": "Pigeon Presents",
+            "__typename": "Series"
+          },
+          "titleRating": {
+            "totalCount": 5943,
+            "weightedAverage": 4.4,
+            "__typename": "TitleRating"
+          },
+          "__typename": "Title"
+        },
+        {
+          "id": "14765268",
+          "titleId": "14765268",
+          "title": "The Light Touch",
+          "artKey": "saf_lighttouch2021",
+          "kind": {
+            "name": "MOVIE",
+            "__typename": "Kind"
+          },
+          "licenseType": "PPU",
+          "overlay": {
+            "name": "Bonus Borrow",
+            "backColor": "2050DD",
+            "foreColor": "F0F1F5",
+            "__typename": "TitleOverlay"
+          },
+          "parentalAdvisory": false,
+          "primaryArtist": {
+            "name": "Tess Spentzos",
+            "__typename": "Artist"
+          },
+          "releaseDate": "2021-11-12T00:00:00.000Z",
+          "status": "BORROW",
+          "subtitle": null,
+          "synopsis": "Sexy puckish pickpocket Becky, a Bugs Bunny of a girl, is teasing a wallet out of a purse on a crowded Athens metro when she notices Miranda, falls in love, and the chase is on. Oops, Becky picks the pocket of a policeman on vacation, her Elmer Fudd, and he's obsessed with catching her.",
+          "series": null,
+          "titleRating": {
+            "totalCount": 93,
+            "weightedAverage": 2.2,
+            "__typename": "TitleRating"
+          },
+          "__typename": "Title"
+        }
+      ],
+      "__typename": "SearchResult"
+    }
+  }
+}

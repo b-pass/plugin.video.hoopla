@@ -1,0 +1,71 @@
+{
+  "data": {
+    "currentlyBorrowed": [
+      {
+        "artKey": "smp_sampleep1",
+        "bingePassType": null,
+        "bundledContent": null,
+        "childrens": false,
+        "circulation": null,
+        "episodes": [
+          {
+            "artKey": "smp_sampleep1",
+            "circulation": {
+              "dueDate": "2030-01-01T00:00:00.000Z",
+              "__typename": "Circulation"
+            },
+            "episode": 1,
+            "id": "1000001",
+            "status": "BORROWED",
+            "synopsis": "Synopsis for sample episode 1.",
+            "title": "Episode 1",
+            "__typename": "Episode"
+          },
+          {
+            "artKey": "smp_sampleep2",
+            "circulation": null,
+            "episode": 2,
+            "id": "1000002",
+            "status": "BORROW",
+            "synopsis": "Synopsis for sample episode 2.",
+            "title": "Episode 2",
+            "__typename": "Episode"
+          },
+          {
+            "artKey": "smp_sampleep3",
+            "circulation": null,
+            "episode": 3,
+            "id": "1000003",
+            "status": "BORROW",
+            "synopsis": "Synopsis for sample episode 3.",
+            "title": "Episode 3",
+            "__typename": "Episode"
+          }
+        ],
+        "externalCatalogUrl": null,
+        "id": "1000001",
+        "issueNumberDescription": "1",
+        "kind": {
+          "name": "TELEVISION",
+          "__typename": "Kind"
+        },
+        "licenseType": "PPU",
+        "parentalAdvisory": false,
+        "playbackPosition": {
+          "percentComplete": 0,
+          "__typename": "PlaybackPosition"
+        },
+        "primaryArtist": {
+          "id": "2000001",
+          "name": "Sample Artist",
+          "__typename": "Artist"
+        },
+        "status": "NONE",
+        "title": "Sample Show - Season 1",
+        "titleId": "1000001",
+        "tracks": null,
+        "__typename": "Title"
+      }
+    ]
+  }
+}

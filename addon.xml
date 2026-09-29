@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="plugin.video.hoopla"
+       name="Hoopla"
+       version="0.0.1"
+       provider-name="b-pass">
+  <requires>
+    <import addon="xbmc.python" version="3.0.1"/>
+    <import addon="script.module.requests" version="2.22.0"/>
+    <import addon="script.module.inputstreamhelper" version="0.5.8+matrix.1"/>
+  </requires>
+  <extension point="xbmc.python.pluginsource" library="addon.py">
+    <provides>video</provides>
+  </extension>
+  <extension point="xbmc.addon.metadata">
+    <summary lang="en_US">Your public library at your fingertips.</summary>
+    <description lang="en_US">Borrow and enjoy audiobooks, eBooks, comics, movies, TV, magazines, or music everywhere you have a screen-your computer, your phone, your car, even your TV. All you need is a library card. hoopla syncs across all your devices, so you can stream titles immediately or whenever you're in the mood. Most titles can also be downloaded to your phone or tablet. hoopla offers more content, in more places, than any other digital library platform and it's all FREE thanks to your public library! Titles may vary based on library catalog.</description>
+    <disclaimer lang="en_US">Unofficial and not affiliated with or specifically authorized by Hoopla or your library. Images and video included with or displayed by this plugin belong to them alone.</disclaimer>
+    <platform>all</platform>
+    <language>en</language>
+    <license>The Unlicense</license>
+    <website>https://www.hoopladigital.com</website>
+    <source>https://github.com/b-pass/plugin.video.hoopla</source>
+    <assets>
+        <icon>resources/icon.png</icon>
+        <fanart>resources/fanart.jpg</fanart>
+        <clearlogo>resources/clearlogo.png</clearlogo>
+    </assets>
+  </extension>
+</addon>

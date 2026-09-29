@@ -1,0 +1,135 @@
+{
+  "data": {
+    "search": {
+      "found": 115,
+      "hits": [
+        {
+          "id": "15935096",
+          "title": "Hallmark+ BingePass",
+          "artKey": "hmk_hallmarkbp2023",
+          "kind": {
+            "name": "BINGEPASS",
+            "__typename": "Kind"
+          },
+          "overlay": null,
+          "licenseType": "PPU",
+          "status": "BORROW",
+          "__typename": "Title",
+          "bingePassType": "EXTERNAL",
+          "genres": [
+            {
+              "name": "Comedy",
+              "kind": {
+                "name": "MOVIE",
+                "__typename": "Kind"
+              },
+              "__typename": "Genre"
+            },
+            {
+              "name": "Romance",
+              "kind": {
+                "name": "MOVIE",
+                "__typename": "Kind"
+              },
+              "__typename": "Genre"
+            },
+            {
+              "name": "Drama",
+              "kind": {
+                "name": "MOVIE",
+                "__typename": "Kind"
+              },
+              "__typename": "Genre"
+            }
+          ]
+        },
+        {
+          "id": "14738022",
+          "title": "The Great Courses Video BingePass",
+          "artKey": "grc_100",
+          "kind": {
+            "name": "BINGEPASS",
+            "__typename": "Kind"
+          },
+          "overlay": null,
+          "licenseType": "PPU",
+          "status": "BORROW",
+          "__typename": "Title",
+          "bingePassType": "EXTERNAL",
+          "genres": [
+            {
+              "name": "Documentary",
+              "kind": {
+                "name": "TELEVISION",
+                "__typename": "Kind"
+              },
+              "__typename": "Genre"
+            },
+            {
+              "name": "History",
+              "kind": {
+                "name": "TELEVISION",
+                "__typename": "Kind"
+              },
+              "__typename": "Genre"
+            },
+            {
+              "name": "Educational",
+              "kind": {
+                "name": "TELEVISION",
+                "__typename": "Kind"
+              },
+              "__typename": "Genre"
+            }
+          ]
+        },
+        {
+          "id": "19268061",
+          "title": "Mister Rogers' Neighborhood BingePass",
+          "artKey": "pbs_mrrogersbp12925",
+          "kind": {
+            "name": "BINGEPASS",
+            "__typename": "Kind"
+          },
+          "overlay": {
+            "name": "New",
+            "backColor": "F09610",
+            "foreColor": "292E3D",
+            "__typename": "TitleOverlay"
+          },
+          "licenseType": "PPU",
+          "status": "BORROW",
+          "__typename": "Title",
+          "bingePassType": "INTERNAL",
+          "genres": [
+            {
+              "name": "Educational",
+              "kind": {
+                "name": "TELEVISION",
+                "__typename": "Kind"
+              },
+              "__typename": "Genre"
+            },
+            {
+              "name": "Family",
+              "kind": {
+                "name": "TELEVISION",
+                "__typename": "Kind"
+              },
+              "__typename": "Genre"
+            },
+            {
+              "name": "Children's",
+              "kind": {
+                "name": "TELEVISION",
+                "__typename": "Kind"
+              },
+              "__typename": "Genre"
+            }
+          ]
+        }
+      ],
+      "__typename": "SearchResult"
+    }
+  }
+}

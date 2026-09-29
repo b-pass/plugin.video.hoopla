@@ -1,0 +1,10 @@
+.creds
+api_log/
+API_NOTES.md
+CLAUDE.md
+tools/
+__pycache__
+*/__pycache__/
+install-local
+kodi.log
+

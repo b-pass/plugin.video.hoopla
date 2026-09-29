@@ -1,0 +1,67 @@
+{
+  "data": {
+    "relatedTitlesForTitle": {
+      "algorithm": "similar-titles-composition-B",
+      "collectionTitle": "More Like Sample Movie",
+      "hits": [
+        {
+          "id": "20237952",
+          "titleId": "20237952",
+          "title": "The Birthday Party",
+          "artKey": "qvr_qd1000488",
+          "kind": {
+            "name": "MOVIE",
+            "__typename": "Kind"
+          },
+          "licenseType": "PPU",
+          "overlay": null,
+          "parentalAdvisory": false,
+          "primaryArtist": {
+            "name": "Willem Dafoe",
+            "__typename": "Artist"
+          },
+          "releaseDate": "2026-09-27T00:00:00.000Z",
+          "status": "BORROW",
+          "subtitle": null,
+          "synopsis": "Marcos Timoleon, an Aristotle Onassis-like tycoon, is throwing a lavish, extravagant birthday party for Sofia, his daughter and sole heiress, on his exclusive private island. The party is a perfect excuse for various people in his life to approach him with their own agendas.",
+          "series": null,
+          "titleRating": {
+            "totalCount": 4,
+            "weightedAverage": 2.3,
+            "__typename": "TitleRating"
+          },
+          "__typename": "Title"
+        },
+        {
+          "id": "20237947",
+          "titleId": "20237947",
+          "title": "Vampires of the Velvet Lounge",
+          "artKey": "qvr_qd1000484",
+          "kind": {
+            "name": "MOVIE",
+            "__typename": "Kind"
+          },
+          "licenseType": "PPU",
+          "overlay": null,
+          "parentalAdvisory": false,
+          "primaryArtist": {
+            "name": "Mena Suvari",
+            "__typename": "Artist"
+          },
+          "releaseDate": "2026-08-09T00:00:00.000Z",
+          "status": "BORROW",
+          "subtitle": null,
+          "synopsis": "A coven of vampires is hunting on dating apps where they meet vampire hunters and schedule dates. The nights that unfold are action-packed modern horror madness.",
+          "series": null,
+          "titleRating": {
+            "totalCount": 12,
+            "weightedAverage": 3.3,
+            "__typename": "TitleRating"
+          },
+          "__typename": "Title"
+        }
+      ],
+      "__typename": "RelatedTitlesForTitleResponse"
+    }
+  }
+}
