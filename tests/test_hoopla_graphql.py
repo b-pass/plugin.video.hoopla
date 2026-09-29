@@ -2,6 +2,7 @@ import base64
 import json
 import os
 import unittest
+from collections import namedtuple
 from datetime import datetime, timezone
 
 import dao
@@ -43,32 +44,36 @@ REST_FIXTURES = [
 ]
 
 
+Request = namedtuple('Request', 'method url headers json data')
+
+
 class FakeSession:
     """GraphQL posts are served from tests/fixtures/<operationName>.json, REST calls from REST_FIXTURES.
 
     `responses` overrides either, keyed by operationName, URL, or 'METHOD url-fragment'.
+    Every request is recorded in `sent`.
     """
 
     def __init__(self, responses=None):
         self.headers = {}
         self.responses = responses or {}
-        self.posts = []
-        self.form_posts = []
-        self.requests = []
-        self.request_data = []
+        self.sent = []
 
-    def post(self, url, json=None, data=None, timeout=None):
-        self.posts.append((url, json if data is None else data))
-        self.form_posts.append(data is not None)
-        key = json.get('operationName') if url == GRAPHQL_URL else url
-        resp = self.responses.get(key)
-        if resp is None:
-            return FakeResponse(fixture(key))
-        return resp
+    @property
+    def operations(self):
+        """The GraphQL payloads sent, in order."""
+        return [r.json for r in self.sent if r.url == GRAPHQL_URL]
 
-    def request(self, method, url, headers=None, data=None, timeout=None):
-        self.requests.append((method, url, headers or {}))
-        self.request_data.append(data)
+    @property
+    def rest(self):
+        """The requests sent other than GraphQL and login, in order."""
+        return [r for r in self.sent if r.url not in (GRAPHQL_URL, TOKENS_URL)]
+
+    def request(self, method, url, headers=None, json=None, data=None, timeout=None):
+        self.sent.append(Request(method, url, headers or {}, json, data))
+        if url in (GRAPHQL_URL, TOKENS_URL):
+            key = json['operationName'] if url == GRAPHQL_URL else url
+            return self.responses.get(key) or FakeResponse(fixture(key))
         for key, resp in self.responses.items():
             m, _, fragment = key.partition(' ')
             if m == method and fragment and fragment in url:
@@ -86,7 +91,6 @@ class QueryShapeTest(unittest.TestCase):
         d, sess = make_dao()
         d.kinds()
         d.genres('9')
-        d.genre('318082608')
         d.borrowed()
         d.borrow_limits()
         d.bingepass_titles(page=2, page_size=3)
@@ -98,12 +102,11 @@ class QueryShapeTest(unittest.TestCase):
         d.related_titles('2000001')
         d.history(page=2, page_size=5)
 
-        for url, payload in sess.posts:
-            self.assertEqual(url, GRAPHQL_URL)
+        self.assertEqual({r.url for r in sess.sent}, {GRAPHQL_URL})
+        for payload in sess.operations:
             self.assertIn(f"query {payload['operationName']}", payload['query'])
-        variables = {p['operationName']: p['variables'] for _, p in sess.posts}
+        variables = {p['operationName']: p['variables'] for p in sess.operations}
         self.assertEqual(variables['GetGenresListQuery'], {'kindId': '9'})
-        self.assertEqual(variables['GetGenreQuery'], {'genreId': '318082608'})
         self.assertEqual(variables['GetBorrowedTitlesQuery'], {'criteria': {}})
         self.assertEqual(variables['GetBingePassTitlesQuery'],
                          {'pagination': {'page': 2, 'pageSize': 3}, 'sort': 'A_Z'})
@@ -123,12 +126,12 @@ class QueryShapeTest(unittest.TestCase):
         d.popular_titles('7')
         d.popular_titles('7', dao.INSTANT)
         d.popular_titles('7', dao.FLEX)
-        ops = [(p['operationName'], p['query']) for _, p in sess.posts]
+        ops = [(p['operationName'], p['query']) for p in sess.operations]
         self.assertEqual([o for o, _ in ops], ['GetPopularTitlesQuery', 'GetPopularInstantQuery', 'GetPopularFlexQuery'])
         self.assertNotIn('borrowType', ops[0][1])
         self.assertIn('borrowType: PPU', ops[1][1])
         self.assertIn('borrowType: EST', ops[2][1])
-        self.assertTrue(all(p['variables'] == {'kindId': '7', 'audience': 'ANY'} for _, p in sess.posts))
+        self.assertTrue(all(p['variables'] == {'kindId': '7', 'audience': 'ANY'} for p in sess.operations))
 
     def test_search_criteria(self):
         d, sess = make_dao()
@@ -137,11 +140,11 @@ class QueryShapeTest(unittest.TestCase):
         d.series_titles('4000001')
         d.collection_titles('30266', page=1, page_size=3, kind_id='9')
         d.genre_titles('320711872', page=1, page_size=3, kind_id='7')
-        criteria = [(p['variables']['criteria'], p['variables']['sort']) for _, p in sess.posts]
+        criteria = [(p['variables']['criteria'], p['variables']['sort']) for p in sess.operations]
         self.assertEqual(criteria, [
             ({'q': 'oppenheimer', 'kindId': '7', 'audience': 'ANY', 'pagination': {'page': 2, 'pageSize': 3}}, 'RELEVANCE'),
             ({'collectionId': '16279', 'audience': 'ANY', 'pagination': {'page': 1, 'pageSize': 3}}, 'A_Z'),
-            ({'seriesId': '4000001', 'audience': 'ANY', 'pagination': {'page': 1, 'pageSize': 50}}, 'A_Z'),
+            ({'seriesId': '4000001', 'audience': 'ANY', 'pagination': {'page': 1, 'pageSize': 150}}, 'A_Z'),
             ({'collectionId': '30266', 'audience': 'ANY', 'kindId': '9', 'pagination': {'page': 1, 'pageSize': 3}},
              'A_Z'),
             ({'genreId': '320711872', 'kindId': '7', 'pagination': {'page': 1, 'pageSize': 3}}, 'A_Z'),
@@ -166,20 +169,7 @@ class MappingTest(unittest.TestCase):
     def test_genres(self):
         d, _ = make_dao()
         genres = d.genres('7')
-        self.assertEqual([(g.id, g.name, g.is_parent) for g in genres],
-                         [('100', 'Action', True), ('101', 'Documentary', False)])
-
-    def test_genre(self):
-        d, _ = make_dao()
-        g = d.genre('318082608')
-        self.assertEqual((g.id, g.name, g.is_parent, g.kind), ('318082608', 'History', False, dao.AUDIOBOOK))
-        self.assertEqual(g.children, [])
-        self.assertEqual(g.ancestors, [])
-
-    def test_missing_genre(self):
-        d, _ = make_dao({'GetGenreQuery': FakeResponse({'data': {'genre': None}})})
-        with self.assertRaises(dao.LibraryError):
-            d.genre('1')
+        self.assertEqual([(g.id, g.name) for g in genres], [('100', 'Action'), ('101', 'Documentary')])
 
     def test_borrowed(self):
         d, _ = make_dao()
@@ -190,7 +180,6 @@ class MappingTest(unittest.TestCase):
         self.assertEqual(t.artist, 'Sample Artist')
         self.assertTrue(t.borrowed, 'a series counts as borrowed when any episode is')
         self.assertIsNone(t.due)
-        self.assertEqual(t.percent_complete, 0)
         self.assertIn('smp_sampleep1', t.image_url)
 
         self.assertEqual([e.number for e in t.episodes], [1, 2, 3])
@@ -202,9 +191,7 @@ class MappingTest(unittest.TestCase):
     def test_borrow_limits(self):
         d, _ = make_dao()
         lim = d.borrow_limits()
-        self.assertEqual(lim.remaining, 5)
         self.assertEqual(lim.message, 'You can borrow 5 more titles this month.')
-        self.assertEqual(lim.instant_remaining, 5)
         self.assertIsNone(lim.flex_remaining)
         self.assertEqual(lim.flex_message, '')
 
@@ -289,7 +276,7 @@ class MappingTest(unittest.TestCase):
         d, sess = make_dao(device_id=None)
         with self.assertRaises(dao.LibraryError):
             d.related_titles('2000001')
-        self.assertEqual(sess.posts, [])
+        self.assertEqual(sess.sent, [])
 
     def test_history(self):
         d, _ = make_dao()
@@ -355,15 +342,15 @@ class StreamTest(unittest.TestCase):
         self.assertEqual(s.license_headers['x-dt-auth-token'], rest_fixture('upfront_auth_token.txt'))
         custom = json.loads(base64.b64decode(s.license_headers['x-dt-custom-data']))
         self.assertEqual(custom, {'userId': '800000001', 'sessionId': '900000001', 'merchant': 'hoopla'})
-        [(method, url, _)] = sess.requests
-        self.assertEqual((method, url),
+        [req] = sess.rest
+        self.assertEqual((req.method, req.url),
                          ('GET', GATEWAY + '/license/castlabs/upfront-auth-tokens/smp_samplemovie/800000001/900000001'))
 
     def test_episode_stream(self):
         d, sess = make_dao({'GetFetchTitleDetailQuery': FakeResponse(series_fixture())})
         s = d.stream('2000002', '2100001')
         self.assertEqual(s.url, DASH_URL.format('smp_sampleep1'))
-        self.assertTrue(sess.requests[0][1].endswith('/smp_sampleep1/800000001/900000002'))
+        self.assertTrue(sess.rest[0].url.endswith('/smp_sampleep1/800000001/900000002'))
 
     def test_not_borrowed(self):
         d, sess = make_dao({'GetFetchTitleDetailQuery': FakeResponse(series_fixture())})
@@ -371,7 +358,7 @@ class StreamTest(unittest.TestCase):
             d.stream('2000002', '2100002')
         with self.assertRaises(dao.LibraryError):
             d.stream('2000002', '9999999')
-        self.assertEqual(sess.requests, [], 'no playback authorization for an unborrowed item')
+        self.assertEqual(sess.rest, [], 'no playback authorization for an unborrowed item')
 
     def test_upfront_token_401(self):
         d, _ = make_dao({'GET /upfront-auth-tokens/': FakeResponse(status_code=401, reason='Unauthorized')})
@@ -383,11 +370,11 @@ class BorrowTest(unittest.TestCase):
     def test_borrow(self):
         d, sess = make_dao()
         self.assertIn('You can now enjoy this title', d.borrow('2000001'))
-        [(method, url, headers)] = sess.requests
-        self.assertEqual((method, url), (
+        [req] = sess.rest
+        self.assertEqual((req.method, req.url), (
             'POST', f'{GATEWAY}/core/v2/users/{USER_ID}/patrons/800000001/borrowed-titles/2000001'
                     '?returnBorrowedTitles=true'))
-        self.assertEqual((headers['patron-id'], headers['app']), ('800000001', 'WWW'))
+        self.assertEqual((req.headers['patron-id'], req.headers['app']), ('800000001', 'WWW'))
 
     def test_borrow_refused(self):
         body = {'message': 'You have reached your monthly borrow limit.'}
@@ -400,8 +387,8 @@ class BorrowTest(unittest.TestCase):
     def test_return(self):
         d, sess = make_dao()
         d.return_item('2100001')
-        [(method, url, _)] = sess.requests
-        self.assertEqual((method, url),
+        [req] = sess.rest
+        self.assertEqual((req.method, req.url),
                          ('DELETE', f'{GATEWAY}/core/users/{USER_ID}/patrons/800000001/borrowed-titles/2100001'))
 
 
@@ -424,7 +411,7 @@ class BingePassTest(unittest.TestCase):
     def test_included_pass(self):
         d, _ = make_dao({'GetFetchTitleDetailQuery': pass_response()})
         t = d.title('19268061')
-        self.assertEqual((t.kind, t.bingepass_type, t.external_url), (dao.BINGEPASS, dao.BINGEPASS_INCLUDED, None))
+        self.assertEqual((t.kind, t.bingepass_type), (dao.BINGEPASS, dao.BINGEPASS_INCLUDED))
         self.assertTrue(t.borrowable and not t.borrowed)
         self.assertEqual([(s.id, s.kind, s.season, len(s.episodes)) for s in t.included],
                          [('19269734', dao.TELEVISION, 26, 2), ('19269741', dao.TELEVISION, 24, 2)])
@@ -436,16 +423,15 @@ class BingePassTest(unittest.TestCase):
         d, _ = make_dao({'GetFetchTitleDetailQuery': pass_response('GetFetchTitleDetailQuery_partner')})
         t = d.title('15935096')
         self.assertEqual(t.bingepass_type, dao.BINGEPASS_PARTNER)
-        self.assertEqual(t.external_url, 'https://binge-pass.hoopladigital.com/titles/15935096')
         self.assertEqual(t.included, [])
 
     def test_stream_through_borrowed_pass(self):
         d, sess = make_dao({'GetFetchTitleDetailQuery': FakeResponse(series_fixture())})
         s = d.stream('2000002', '2100002', bingepass_id='19268061')  # episode 2 has no loan of its own
         self.assertEqual(s.url, DASH_URL.format('smp_sampleep2'))
-        self.assertTrue(sess.requests[0][1].endswith('/smp_sampleep2/800000001/900000009'),
+        self.assertTrue(sess.rest[0].url.endswith('/smp_sampleep2/800000001/900000009'),
                         'the pass loan authorizes the episode')
-        ops = [p['operationName'] for _, p in sess.posts]
+        ops = [p['operationName'] for p in sess.operations]
         self.assertEqual(ops, ['GetFetchTitleDetailQuery', 'GetFetchBorrowCirculationQuery'])
 
     def test_stream_through_unborrowed_pass(self):
@@ -454,27 +440,69 @@ class BingePassTest(unittest.TestCase):
                             'GetFetchBorrowCirculationQuery': FakeResponse(body)})
         with self.assertRaises(dao.NotBorrowedError):
             d.stream('2000002', '2100002', bingepass_id='19268061')
-        self.assertEqual(sess.requests, [])
+        self.assertEqual(sess.rest, [])
+
+
+def collections_response(*names):
+    group = [{'id': str(30000 + i), 'name': n, '__typename': 'Collection'} for i, n in enumerate(names)]
+    return FakeResponse({'data': {'library': [], 'featured': group, 'all': group}})
+
+
+class BonusTest(unittest.TestCase):
+    def test_all_video_collection(self):
+        d, sess = make_dao({'GetCollectionsListQuery': collections_response(
+            'New to hoopla', 'Bonus Borrows September 2026 | All Titles', 'Bonus Borrows September 2026 | All Video')})
+        titles = d.bonus_titles(['7', '9'])
+        searches = [p['variables']['criteria'] for p in sess.operations if p['operationName'] == 'GetFilterSearchQuery']
+        self.assertEqual(searches, [{'collectionId': '30002', 'audience': 'ANY', 'pagination': {'page': 1, 'pageSize': 150}}])
+        self.assertEqual(len(titles), 3)
+
+    def test_bonus_flag(self):
+        body = fixture('GetFetchTitleDetailQuery')
+        body['data']['title']['overlay'] = {'name': 'Bonus Borrow'}
+        d, _ = make_dao({'GetFetchTitleDetailQuery': FakeResponse(body)})
+        self.assertTrue(d.title('2000001').bonus)
+        d, _ = make_dao()
+        self.assertFalse(d.title('2000001').bonus)
+
+    def test_per_kind_fallback(self):
+        d, sess = make_dao({'GetCollectionsListQuery': collections_response(
+            'Bonus Borrows October 2026 | All Movies', 'Bonus Borrows October 2026 | All Titles', 'Action-Packed Movies')})
+        titles = d.bonus_titles(['7'])
+        searches = [p['variables']['criteria'] for p in sess.operations if p['operationName'] == 'GetFilterSearchQuery']
+        self.assertEqual(searches, [{'collectionId': '30000', 'audience': 'ANY', 'kindId': '7',
+                                     'pagination': {'page': 1, 'pageSize': 150}}])
+        self.assertEqual(len(titles), 3)
+
+    def test_none_this_month(self):
+        d, sess = make_dao({'GetCollectionsListQuery': collections_response('New to hoopla')})
+        self.assertEqual(d.bonus_titles(['7', '9']), [])
+        self.assertFalse(any(p['operationName'] == 'GetFilterSearchQuery' for p in sess.operations))
 
 
 class PageSizeTest(unittest.TestCase):
     def test_page_size_capped(self):
         d, sess = make_dao()
         page = d.genre_titles('1', page=2, page_size=500)
-        self.assertEqual(sess.posts[-1][1]['variables']['criteria']['pagination'], {'page': 2, 'pageSize': 150})
+        self.assertEqual(sess.operations[-1]['variables']['criteria']['pagination'], {'page': 2, 'pageSize': 150})
         self.assertEqual(page.page_size, 150, 'has_more must use the size actually served')
         d.bingepass_titles(page=1, page_size=500)
-        self.assertEqual(sess.posts[-1][1]['variables']['pagination'], {'page': 1, 'pageSize': 150})
+        self.assertEqual(sess.operations[-1]['variables']['pagination'], {'page': 1, 'pageSize': 150})
+
+    def test_default_page_size_is_the_largest(self):
+        d, sess = make_dao()
+        self.assertEqual(d.genre_titles('1').page_size, 150)
+        self.assertEqual(sess.operations[-1]['variables']['criteria']['pagination'], {'page': 1, 'pageSize': 150})
 
 
 class RateTest(unittest.TestCase):
     def test_rate(self):
         d, sess = make_dao()
         d.rate('2000001', 4)
-        [(method, url, headers)] = sess.requests
-        self.assertEqual((method, url), ('POST', f'{GATEWAY}/core/titles/2000001/patron-ratings'))
-        self.assertEqual(sess.request_data, [{'stars': 4}])
-        self.assertEqual((headers['patron-id'], headers['Content-Type']),
+        [req] = sess.rest
+        self.assertEqual((req.method, req.url), ('POST', f'{GATEWAY}/core/titles/2000001/patron-ratings'))
+        self.assertEqual(req.data, {'stars': 4})
+        self.assertEqual((req.headers['patron-id'], req.headers['Content-Type']),
                          ('800000001', 'application/x-www-form-urlencoded'))
 
     def test_rate_range(self):
@@ -482,7 +510,7 @@ class RateTest(unittest.TestCase):
         for stars in (0, 6):
             with self.assertRaises(ValueError):
                 d.rate('2000001', stars)
-        self.assertEqual(sess.requests, [])
+        self.assertEqual(sess.sent, [])
 
 
 class ErrorTest(unittest.TestCase):
@@ -522,8 +550,9 @@ class AuthTest(unittest.TestCase):
         self.assertEqual(d.login('user', 'pw'), 'abc')
         self.assertEqual(sess.headers['Authorization'], 'Bearer abc')
         self.assertEqual(d.session_token, 'abc')
-        self.assertEqual(sess.posts[-1], (TOKENS_URL, {'username': 'user', 'password': 'pw'}))
-        self.assertTrue(sess.form_posts[-1], 'login must be form-encoded; a JSON body gets a 500')
+        login = sess.sent[-1]
+        self.assertEqual((login.method, login.url, login.data), ('POST', TOKENS_URL, {'username': 'user', 'password': 'pw'}))
+        self.assertIsNone(login.json, 'login must be form-encoded; a JSON body gets a 500')
 
     def test_login_failure_status(self):
         d, sess = make_dao({TOKENS_URL: FakeResponse({'tokenStatus': 'INVALID_CREDENTIALS'})})

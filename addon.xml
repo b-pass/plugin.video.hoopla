@@ -13,7 +13,7 @@
   </extension>
   <extension point="xbmc.addon.metadata">
     <summary lang="en_US">Your public library at your fingertips.</summary>
-    <description lang="en_US">Borrow and enjoy audiobooks, eBooks, comics, movies, TV, magazines, or music everywhere you have a screen-your computer, your phone, your car, even your TV. All you need is a library card. hoopla syncs across all your devices, so you can stream titles immediately or whenever you're in the mood. Most titles can also be downloaded to your phone or tablet. hoopla offers more content, in more places, than any other digital library platform and it's all FREE thanks to your public library! Titles may vary based on library catalog.</description>
+    <description lang="en_US">Watch hoopla digital's movies, TV and BingePasses in Kodi with your public library card. Browse and search your library's catalog, borrow as you play, and see your loans and borrowing history. Requires a hoopla account from a participating library, and Widevine DRM (set up through InputStream Helper).</description>
     <disclaimer lang="en_US">Unofficial and not affiliated with or specifically authorized by Hoopla or your library. Images and video included with or displayed by this plugin belong to them alone.</disclaimer>
     <platform>all</platform>
     <language>en</language>

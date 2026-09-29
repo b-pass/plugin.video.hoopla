@@ -3,7 +3,6 @@
 import re
 import sys
 import uuid
-from datetime import datetime, timezone
 from urllib.parse import parse_qsl, urlencode
 
 import xbmc
@@ -13,12 +12,11 @@ import xbmcplugin
 
 import dao
 from hoopla_graphql import HooplaGraphQLDAO as BackendDAO
+from presentation import (VIDEO_KINDS, borrow_allowance, by_season, content_for, due_text, included_passes, loan_due,
+                          paragraphs, playable, time_left, without_downloads)
 
 PLUGIN_BASE = ''
 HANDLE = -1
-DO_CACHE = True # set me to True when not debugging....
-VIDEO_KINDS = (dao.MOVIE, dao.TELEVISION)
-PAGE_SIZE = 150  # the most Hoopla returns per page; fewer pages means fewer waits
 HISTORY_PAGE_SIZE = 50  # history's own limit is unknown, and a short page is how we detect the end
 NOT_BORROWED = object()
 ROWS = {  # row -> (label, DAO call)
@@ -86,36 +84,30 @@ def dao_call(fn):
         xbmcgui.Dialog().ok('Hoopla API Failure', str(e))
     return None
 
+def dao_ok(fn):
+    """dao_call() for a DAO call with no result: True when it succeeded."""
+    return dao_call(lambda d: fn(d) or True) is not None
+
 # Sort modes: the first method listed is the one Kodi starts with.
-MENU = 'menu'        # fixed menu order
-NAMES = 'names'      # folders of genres/collections: A-Z
-AZ = 'az'            # titles with no meaningful order of their own: A-Z
-RANKED = 'ranked'    # titles whose order means something (popularity, relevance, date): keep it
-EPISODES = 'episodes'
+_TITLE_SORTS = [xbmcplugin.SORT_METHOD_VIDEO_YEAR, xbmcplugin.SORT_METHOD_VIDEO_RATING, xbmcplugin.SORT_METHOD_DURATION]
+# fixed menu order
+MENU = [xbmcplugin.SORT_METHOD_UNSORTED]
+# folders of genres/collections: A-Z
+NAMES = [xbmcplugin.SORT_METHOD_LABEL_IGNORE_THE, xbmcplugin.SORT_METHOD_UNSORTED]
+# titles: A-Z, with the server's order (popularity, relevance, date, ...) as the next choice
+TITLES = [xbmcplugin.SORT_METHOD_TITLE_IGNORE_THE, xbmcplugin.SORT_METHOD_UNSORTED] + _TITLE_SORTS
+# seasons (with any movies after them): Kodi has no season sort for addons, so these lists come
+# pre-sorted by by_season() and keep that order
+SEASONS = [xbmcplugin.SORT_METHOD_UNSORTED, xbmcplugin.SORT_METHOD_TITLE_IGNORE_THE] + _TITLE_SORTS
+EPISODES = [xbmcplugin.SORT_METHOD_EPISODE, xbmcplugin.SORT_METHOD_TITLE_IGNORE_THE, xbmcplugin.SORT_METHOD_UNSORTED]
 
-def sort_methods(sort):
-    x = xbmcplugin
-    title_sorts = [x.SORT_METHOD_VIDEO_YEAR, x.SORT_METHOD_VIDEO_RATING, x.SORT_METHOD_DURATION]
-    return {
-        MENU: [x.SORT_METHOD_UNSORTED],
-        NAMES: [x.SORT_METHOD_LABEL_IGNORE_THE, x.SORT_METHOD_UNSORTED],
-        AZ: [x.SORT_METHOD_TITLE_IGNORE_THE] + title_sorts + [x.SORT_METHOD_UNSORTED],
-        RANKED: [x.SORT_METHOD_UNSORTED, x.SORT_METHOD_TITLE_IGNORE_THE] + title_sorts,
-        EPISODES: [x.SORT_METHOD_EPISODE, x.SORT_METHOD_TITLE_IGNORE_THE, x.SORT_METHOD_UNSORTED],
-    }[sort]
-
-def end_directory(items, succeeded=True, content=None, cache=DO_CACHE, sort=MENU):
+def end_directory(items, succeeded=True, content=None, sort=MENU, cache=True):
     xbmcplugin.addDirectoryItems(HANDLE, items, len(items))
     if content:
         xbmcplugin.setContent(HANDLE, content)
-    for method in sort_methods(sort):
+    for method in sort:
         xbmcplugin.addSortMethod(HANDLE, method)
     xbmcplugin.endOfDirectory(HANDLE, succeeded=succeeded, cacheToDisc=cache)
-
-def content_for(titles):
-    """Kodi's content type, which decides the views and metadata a skin shows."""
-    kinds = {t.kind for t in titles}
-    return {frozenset([dao.MOVIE]): 'movies', frozenset([dao.TELEVISION]): 'tvshows'}.get(frozenset(kinds), 'videos')
 
 def folder_item(label):
     item = xbmcgui.ListItem(label=label)
@@ -130,26 +122,6 @@ def next_page(url):
 def set_art(item, image_url):
     if image_url:
         item.setArt({'thumb': image_url, 'poster': image_url})
-
-def due_text(due):
-    return f'Due {due.astimezone():%Y-%m-%d %H:%M}' if due else ''
-
-def time_left(due, now=None):
-    """'3 days left' / '5 hours left' until a loan ends. Days are rounded, so a fresh 3-day loan
-    reads 3 days, not 2."""
-    hours = (due - (now or datetime.now(timezone.utc))).total_seconds() / 3600
-    if hours <= 0:
-        return 'due now'
-    if hours < 24:
-        n = max(1, int(hours))
-        return f'{n} hour{"s" if n != 1 else ""} left'
-    n = max(1, round(hours / 24))
-    return f'{n} day{"s" if n != 1 else ""} left'
-
-def loan_due(t):
-    """When a borrowed title's loan ends. A TV season's episodes are borrowed one by one, so it's the
-    soonest-due borrowed episode."""
-    return t.due or min((e.due for e in t.episodes if e.borrowed and e.due), default=None)
 
 def return_menu(item_id, label):
     return ('Return', f'RunPlugin({plugin_url("return", id=item_id, label=label)})')
@@ -168,17 +140,19 @@ def title_menu(t, can_return=True):
     menu.append(rate_menu(t))
     return menu
 
-def title_item(t, label=None):
-    label = label or t.title
-    if t.borrow_type == dao.FLEX:
-        label = f'[Flex] {label}'
+def title_item(t, label=None, note=None):
+    """label: shown in place of the title. note: an extra line for the end of the plot."""
+    title = label or t.title
+    label = f'[Flex] {title}' if t.borrow_type == dao.FLEX else title
     item = xbmcgui.ListItem(label=f'[{t.badge}] {label}' if t.badge else label)
     info = item.getVideoInfoTag()
-    info.setTitle(t.title)
+    # Kodi's sort methods label items with the info tag's title (the %T mask), not the ListItem label.
+    info.setTitle(title)
+    info.setSortTitle(t.title)
     info.setMediaType({dao.MOVIE: 'movie', dao.TELEVISION: 'tvshow'}.get(t.kind, 'video'))
     if t.artist:
         info.setArtists([t.artist])
-    info.setPlot('\n\n'.join(s for s in (t.synopsis, due_text(t.due)) if s))
+    info.setPlot(paragraphs(t.synopsis, due_text(t.due), note))
     if t.year:
         info.setYear(t.year)
     if t.duration:
@@ -210,7 +184,7 @@ def episode_item(t, e):
         info.setSortEpisode(e.number)
     if e.duration:
         info.setDuration(e.duration)
-    info.setPlot('\n\n'.join(s for s in (e.synopsis, due_text(e.due)) if s))
+    info.setPlot(paragraphs(e.synopsis, due_text(e.due)))
     set_art(item, e.image_url or t.image_url)
     # Ratings belong to titles, and an episode is content within its season's title, so rate the season.
     menu = [rate_menu(t, 'Rate season...')]
@@ -228,9 +202,9 @@ def play_entry(item, borrowed, label, **params):
         return plugin_url('play', **params), item, False
     return plugin_url('borrow', label=label, **params), item, False
 
-def catalog_entry(t, label=None):
+def catalog_entry(t, label=None, note=None):
     """A (url, item, is_folder) entry for a title from any listing."""
-    item = title_item(t, label)
+    item = title_item(t, label, note)
     if t.kind in VIDEO_KINDS:
         item.addContextMenuItems(title_menu(t))
     if t.kind == dao.TELEVISION:
@@ -241,27 +215,16 @@ def catalog_entry(t, label=None):
         return plugin_url('pass', title=t.id), item, True
     return plugin_url('unsupported'), item, False
 
-def playable(titles):
-    """Hide titles this addon can't play (ebooks, audiobooks, BingePasses, ...) that mixed lists contain."""
-    return [t for t in titles or [] if t.kind in VIDEO_KINDS]
-
-def included_passes(titles):
-    """BingePasses with something to watch here. Partner passes unlock another website, and a pass
-    whose genres are all book/comic/music genres bundles nothing Kodi can play."""
-    return [t for t in titles or [] if t.kind == dao.BINGEPASS and t.bingepass_type != dao.BINGEPASS_PARTNER
-            and (not t.content_kinds or any(k in VIDEO_KINDS for k in t.content_kinds))]
-
-def list_titles(titles, sort, cache=DO_CACHE, keep=playable):
+def list_titles(titles, sort, keep=playable):
     shown = keep(titles)
-    end_directory([catalog_entry(t) for t in shown], succeeded=titles is not None, content=content_for(shown),
-                  cache=cache, sort=sort)
+    end_directory([catalog_entry(t) for t in shown], succeeded=titles is not None, content=content_for(shown), sort=sort)
 
-def list_page(result, next_url, sort, cache=DO_CACHE, keep=playable):
+def list_page(result, next_url, sort, keep=playable):
     shown = keep(result.titles) if result else []
     items = [catalog_entry(t) for t in shown]
     if result and result.has_more:
         items.append(next_page(next_url))
-    end_directory(items, succeeded=result is not None, content=content_for(shown), cache=cache, sort=sort)
+    end_directory(items, succeeded=result is not None, content=content_for(shown), sort=sort)
 
 def list_main():
     result = dao_call(lambda d: (d.borrow_limits(), d.kinds()))
@@ -270,9 +233,11 @@ def list_main():
     flex = int(bool(limits and limits.flex_remaining is not None))
 
     label = f'Borrowed - {limits.message}' if limits and limits.message else 'Borrowed'
+    video_kinds = ','.join(k.id for k in kinds if k.name in VIDEO_KINDS)
     items = [
         (plugin_url('borrowed'), folder_item(label), True),
-        (plugin_url('history', page=1), folder_item('Borrowing history'), True),
+        (plugin_url('bonus', kinds=video_kinds), folder_item('Bonus Borrows'), True),
+        #(plugin_url('history', page=1), folder_item('Borrowing history'), True),
         (plugin_url('bingepass', page=1), folder_item('BingePass'), True),
     ]
     for k in kinds:
@@ -281,7 +246,7 @@ def list_main():
     # Checked after the calls above, which log in on their own when they can.
     if not addon.getSetting('authorization'):
         items.append((plugin_url('login'), xbmcgui.ListItem('Log in'), False))
-    end_directory(items, cache=False)
+    end_directory(items, cache=False)  # the Borrowed label shows the current allowance
 
 def list_kind(kind_id, label, flex):
     """The menu for one kind (Movies, Television). It makes no requests itself."""
@@ -296,7 +261,7 @@ def list_kind(kind_id, label, flex):
 
 def list_row(row, kind_id):
     _, fetch = ROWS[row]
-    list_titles(dao_call(lambda d: fetch(d, kind_id)), RANKED)
+    list_titles(dao_call(lambda d: fetch(d, kind_id)), TITLES)
 
 def list_borrowed():
     titles = dao_call(lambda d: d.borrowed())
@@ -306,7 +271,13 @@ def list_borrowed():
     for t in shown:
         due = loan_due(t)
         items.append(catalog_entry(t, f'{t.title} ({time_left(due)})' if due else None))
-    end_directory(items, succeeded=titles is not None, content=content_for(shown), cache=False, sort=AZ)
+    end_directory(items, succeeded=titles is not None, content=content_for(shown), sort=TITLES, cache=False)
+
+def list_bonus(kind_ids):
+    titles = dao_call(lambda d: d.bonus_titles(kind_ids))
+    for t in titles or []:
+        t.badge = None  # they'd all say "Bonus Borrow" in this folder
+    list_titles(titles, TITLES)
 
 def list_history(page):
     entries = dao_call(lambda d: d.history(page=page, page_size=HISTORY_PAGE_SIZE))
@@ -316,47 +287,49 @@ def list_history(page):
             continue
         shown.append(h.title)
         label = f'{h.title.title}: {h.episode_title}' if h.episode_title else h.title.title
-        url, item, is_folder = catalog_entry(h.title, label)
-        if h.borrowed_date:
-            item.getVideoInfoTag().setPlot('\n\n'.join(
-                s for s in (h.title.synopsis, f'Borrowed {h.borrowed_date.astimezone():%Y-%m-%d}') if s))
-        items.append((url, item, is_folder))
+        note = f'Borrowed {h.borrowed_date.astimezone():%Y-%m-%d}' if h.borrowed_date else None
+        items.append(catalog_entry(h.title, label, note))
     if entries and len(entries) == HISTORY_PAGE_SIZE:
         items.append(next_page(plugin_url('history', page=page + 1)))
-    end_directory(items, succeeded=entries is not None, content=content_for(shown), cache=False, sort=RANKED)
+    end_directory(items, succeeded=entries is not None, content=content_for(shown), sort=TITLES)
+
+def list_season(season, bingepass_id=None):
+    """A season's episodes. bingepass_id: the pass the season was opened through, whose loan plays them."""
+    params = {'bingepass': bingepass_id} if bingepass_id else {}
+    items = [play_entry(episode_item(season, e), e.borrowed, f'{season.title}: {e.title}',
+                        title=season.id, episode=e.id, **params)
+             for e in season.episodes] if season else []
+    end_directory(items, succeeded=season is not None, content='episodes', sort=EPISODES, cache=False)
 
 def list_episodes(title_id):
-    t = dao_call(lambda d: d.title(title_id))
-    items = [play_entry(episode_item(t, e), e.borrowed, f'{t.title}: {e.title}', title=t.id, episode=e.id)
-             for e in t.episodes] if t else []
-    end_directory(items, succeeded=t is not None, content='episodes', cache=False, sort=EPISODES)
+    list_season(dao_call(lambda d: d.title(title_id)))
 
 def list_bingepass(page):
-    result = dao_call(lambda d: d.bingepass_titles(page=page, page_size=PAGE_SIZE))
-    list_page(result, plugin_url('bingepass', page=page + 1), AZ, keep=included_passes)
+    result = dao_call(lambda d: d.bingepass_titles(page=page))
+    list_page(result, plugin_url('bingepass', page=page + 1), TITLES, keep=included_passes)
 
-def list_pass(pass_id, season_id=None):
+def pass_contents(t):
+    """An included BingePass's seasons, then its movies."""
+    return by_season(playable(t.included))
+
+def list_pass_season(pass_id, season_id):
     t = dao_call(lambda d: d.title(pass_id))
-    if t is None:
-        end_directory([], succeeded=False, cache=False)
+    contents = pass_contents(t) if t else []
+    list_season(next((x for x in contents if x.kind == dao.TELEVISION and x.id == season_id), None), pass_id)
+
+def list_pass(pass_id):
+    """An included BingePass's seasons and movies. A pass of just one season opens straight to its episodes."""
+    t = dao_call(lambda d: d.title(pass_id))
+    if t is None or t.bingepass_type == dao.BINGEPASS_PARTNER:
+        end_directory([], succeeded=False)
         return
-    if t.bingepass_type == dao.BINGEPASS_PARTNER:
-        end_directory([], succeeded=False, cache=False)
-        return
-    included = sorted(playable(t.included), key=lambda x: (x.kind != dao.TELEVISION, x.season or 0, x.title))
-    seasons = [x for x in included if x.kind == dao.TELEVISION]
-    if season_id is None and len(included) == 1 and seasons:
-        season_id = seasons[0].id
-    if season_id is not None:
-        season = next((x for x in seasons if x.id == season_id), None)
-        items = [play_entry(episode_item(season, e), e.borrowed, f'{season.title}: {e.title}',
-                            title=season.id, episode=e.id, bingepass=pass_id)
-                 for e in season.episodes] if season else []
-        end_directory(items, succeeded=season is not None, content='episodes', cache=False, sort=EPISODES)
+    included = pass_contents(t)
+    if len(included) == 1 and included[0].kind == dao.TELEVISION:
+        list_season(included[0], pass_id)
         return
     if not included:
         xbmcgui.Dialog().ok(t.title, 'This BingePass has no movies or TV to play here.')
-        end_directory([], succeeded=False, cache=False)
+        end_directory([], succeeded=False)
         return
     items = []
     for x in included:
@@ -367,7 +340,7 @@ def list_pass(pass_id, season_id=None):
             items.append((plugin_url('pass', title=pass_id, season=x.id), item, True))
         else:
             items.append(play_entry(item, x.borrowed, x.title, title=x.id, bingepass=pass_id))
-    end_directory(items, content=content_for(included), cache=False, sort=RANKED)
+    end_directory(items, content=content_for(included), sort=SEASONS)
 
 def list_genres(kind_id):
     genres = dao_call(lambda d: d.genres(kind_id))
@@ -376,8 +349,8 @@ def list_genres(kind_id):
     end_directory(items, succeeded=genres is not None, sort=NAMES)
 
 def list_genre(genre_id, kind_id, page):
-    result = dao_call(lambda d: d.genre_titles(genre_id, page=page, page_size=PAGE_SIZE, kind_id=kind_id))
-    list_page(result, plugin_url('genre', genre=genre_id, kind=kind_id, page=page + 1), AZ)
+    result = dao_call(lambda d: d.genre_titles(genre_id, page=page, kind_id=kind_id))
+    list_page(result, plugin_url('genre', genre=genre_id, kind=kind_id, page=page + 1), TITLES)
 
 def list_collections(kind_id):
     collections = dao_call(lambda d: d.collections(kind_id))
@@ -387,24 +360,25 @@ def list_collections(kind_id):
 
 def list_collection(collection_id, kind_id, page):
     # Collections can mix kinds (e.g. "... | All Titles"); only ask for the kind this menu is about.
-    result = dao_call(lambda d: d.collection_titles(collection_id, page=page, page_size=PAGE_SIZE, kind_id=kind_id))
-    list_page(result, plugin_url('collection', collection=collection_id, kind=kind_id, page=page + 1), AZ)
+    result = dao_call(lambda d: d.collection_titles(collection_id, page=page, kind_id=kind_id))
+    list_page(result, plugin_url('collection', collection=collection_id, kind=kind_id, page=page + 1), TITLES)
 
 def list_series(series_id, page):
-    result = dao_call(lambda d: d.series_titles(series_id, page=page, page_size=PAGE_SIZE))
-    list_page(result, plugin_url('series', series=series_id, page=page + 1), AZ)
+    result = dao_call(lambda d: d.series_titles(series_id, page=page))
+    list_page(result, plugin_url('series', series=series_id, page=page + 1), SEASONS,
+              keep=lambda titles: by_season(playable(titles)))
 
 def list_related(title_id):
-    list_titles(dao_call(lambda d: d.related_titles(title_id)), RANKED)
+    list_titles(dao_call(lambda d: d.related_titles(title_id)), TITLES)
 
 def search(kind_id, label, query, page):
     if query is None:
         query = xbmcgui.Dialog().input(f'Search {label}')
         if not query:
-            end_directory([], succeeded=False, cache=False)
+            end_directory([], succeeded=False)
             return
-    result = dao_call(lambda d: d.search(query, kind_id, page=page, page_size=PAGE_SIZE))
-    list_page(result, plugin_url('search', kind=kind_id, label=label, q=query, page=page + 1), RANKED, cache=False)
+    result = dao_call(lambda d: d.search(query, kind_id, page=page))
+    list_page(result, plugin_url('search', kind=kind_id, label=label, q=query, page=page + 1), TITLES)
 
 def rate(title_id, label, current):
     choices = [f'{"*" * n} ({n})' for n in range(5, 0, -1)]
@@ -414,7 +388,7 @@ def rate(title_id, label, current):
         return
     stars = 5 - picked
     log('Rating "{}" ({}) {} of 5', label, title_id, stars)
-    if dao_call(lambda d: d.rate(title_id, stars) or True):
+    if dao_ok(lambda d: d.rate(title_id, stars)):
         log('Rated "{}"', label)
         notify(f'Rated "{label}" {stars} of 5' if label else f'Rated {stars} of 5')
         xbmc.executebuiltin('Container.Refresh')
@@ -429,19 +403,9 @@ def force_login():
         log('Login failed: {}', e, level=xbmc.LOGERROR)
         xbmcgui.Dialog().ok('Login Failed', str(e))
 
-def without_downloads(text):
-    """Drop the library's sentences about downloading to mobile apps; that doesn't apply to Kodi."""
-    sentences = re.split(r'(?<=[.!?])\s+', text or '')
-    return ' '.join(s for s in sentences if 'download' not in s.lower()).strip()
-
-def confirm_borrow(t, e):
-    limits = dao_call(lambda d: d.borrow_limits())
-    name = f'{t.title}: {e.title}' if e else t.title
-    allowance = ''
-    if limits:
-        allowance = limits.flex_message if t.borrow_type == dao.FLEX else limits.instant_message
-        allowance = allowance or limits.message
-    lines = [name, allowance, without_downloads(t.lending_message)]
+def confirm_borrow(t, name):
+    limits = None if t.bonus else dao_call(lambda d: d.borrow_limits())  # a bonus borrow doesn't use them
+    lines = [name, borrow_allowance(t, limits), without_downloads(t.lending_message)]
     return xbmcgui.Dialog().yesno('Borrow from Hoopla?', '\n'.join(s for s in lines if s),
                                   nolabel='Cancel', yeslabel='Borrow')
 
@@ -458,7 +422,7 @@ def borrow_for_play(title_id, episode_id, bingepass_id=None):
         log('Not borrowable: "{}" ({})', name, target.id, level=xbmc.LOGWARNING)
         xbmcgui.Dialog().ok('Hoopla', 'This title is not available to borrow right now.')
         return False
-    if not confirm_borrow(t, e):
+    if not confirm_borrow(t, name):
         log('Borrow declined: "{}" ({})', name, target.id)
         return False
     log('Borrowing "{}" ({})', name, target.id)
@@ -470,7 +434,7 @@ def borrow_for_play(title_id, episode_id, bingepass_id=None):
     log('Borrowed "{}": {}', name, message)
     return True
 
-def inputstream_ready(manifest_type='mpd', drm='com.widevine.alpha'):
+def inputstream_ready(manifest_type='mpd', drm=dao.WIDEVINE):
     """Make sure Kodi can play DRM video: inputstreamhelper installs/enables inputstream.adaptive and
     Widevine. Returns the inputstream addon to use, or None when it isn't ready and the user cancels."""
     inputstream = 'inputstream.adaptive'
@@ -499,25 +463,27 @@ def inputstream_ready(manifest_type='mpd', drm='com.widevine.alpha'):
     log('Not playing: Widevine not confirmed')
     return None
 
-def inputstream_version():
+def inputstream_major():
+    """inputstream.adaptive's major version, or 0 when it isn't installed."""
     try:
         version = xbmcaddon.Addon('inputstream.adaptive').getAddonInfo('version')
     except RuntimeError:
-        return (0,)
-    return tuple(int(n) for n in re.findall(r'\d+', version)[:3]) or (0,)
+        return 0
+    log('inputstream.adaptive {}', version)
+    m = re.match(r'\d+', version)
+    return int(m.group()) if m else 0
 
 def set_drm_properties(item, stream):
     """inputstream.adaptive's DRM properties changed across Kodi versions:
     <= 21 (Kodi 20/21) takes license_type + license_key, and Kodi 20 still needs manifest_type;
     22+ (Kodi 22/23) takes drm_legacy, and the old properties are deprecated."""
-    isa = inputstream_version()
-    log('inputstream.adaptive {}', '.'.join(map(str, isa)))
-    if isa[0] < 21:
+    isa = inputstream_major()
+    if isa < 21:
         item.setProperty('inputstream.adaptive.manifest_type', stream.manifest_type)
     if not stream.drm:
         return
     headers = urlencode(stream.license_headers)
-    if isa[0] >= 22:
+    if isa >= 22:
         item.setProperty('inputstream.adaptive.drm_legacy', f'{stream.drm}|{stream.license_url}|{headers}')
     else:
         item.setProperty('inputstream.adaptive.license_type', stream.drm)
@@ -525,7 +491,7 @@ def set_drm_properties(item, stream):
 
 def play(title_id, episode_id=None, bingepass_id=None, label=None, inputstream=None):
     """inputstream: set when borrow_then_play() has already run inputstream_ready()."""
-    if not (inputstream or '').startswith('inputstream.'):
+    if not inputstream:
         inputstream = inputstream_ready()
     if not inputstream:
         xbmcplugin.setResolvedUrl(HANDLE, False, xbmcgui.ListItem(offscreen=True))
@@ -552,7 +518,7 @@ def play(title_id, episode_id=None, bingepass_id=None, label=None, inputstream=N
     if label:  # started with PlayMedia (after borrowing) there's no list item for Kodi to take a title from
         item.setLabel(label)
         item.getVideoInfoTag().setTitle(label)
-    item.setMimeType('application/dash+xml' if stream.manifest_type == 'mpd' else 'application/vnd.apple.mpegurl')
+    item.setMimeType('application/dash+xml')
     item.setContentLookup(False)
     item.setProperty('inputstream', inputstream)
     set_drm_properties(item, stream)
@@ -575,7 +541,7 @@ def return_item(item_id, label):
         log('Return declined: "{}" ({})', label, item_id)
         return
     log('Returning "{}" ({})', label, item_id)
-    if dao_call(lambda d: d.return_item(item_id) or True):
+    if dao_ok(lambda d: d.return_item(item_id)):
         log('Returned "{}" ({})', label, item_id)
         notify('Returned')
         xbmc.executebuiltin('Container.Refresh')
@@ -599,6 +565,8 @@ if __name__ == '__main__':
         list_borrowed()
     elif action == 'history':
         list_history(page)
+    elif action == 'bonus':
+        list_bonus([k for k in args.get('kinds', '').split(',') if k])
     elif action == 'episodes':
         list_episodes(args['title'])
     elif action == 'bingepass':
@@ -630,7 +598,10 @@ if __name__ == '__main__':
     elif action == 'borrow':
         borrow_then_play(args['title'], args.get('episode'), args.get('bingepass'), args.get('label', ''))
     elif action == 'pass':
-        list_pass(args['title'], args.get('season'))
+        if 'season' in args:
+            list_pass_season(args['title'], args['season'])
+        else:
+            list_pass(args['title'])
     elif action == 'return':
         return_item(args['id'], args.get('label', ''))
     elif action == 'unsupported':

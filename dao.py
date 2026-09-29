@@ -11,17 +11,18 @@ from typing import Dict, List, Optional
 MOVIE = 'MOVIE'
 TELEVISION = 'TELEVISION'
 BINGEPASS = 'BINGEPASS'
-AUDIOBOOK = 'AUDIOBOOK'
-MUSIC = 'MUSIC'
 
 # How a title is lent: Instant titles are always available; Flex titles have limited copies.
 INSTANT = 'INSTANT'
 FLEX = 'FLEX'
 
 # BingePasses: one borrow unlocks a bundle for some days. INCLUDED passes bundle titles of this service
-# (Title.included); PARTNER passes unlock a partner's own website instead (Title.external_url).
+# (Title.included); PARTNER passes unlock a partner's own website instead.
 BINGEPASS_INCLUDED = 'INCLUDED'
 BINGEPASS_PARTNER = 'PARTNER'
+
+# DRM key systems (Stream.drm).
+WIDEVINE = 'com.widevine.alpha'
 
 
 class LibraryError(Exception):
@@ -47,10 +48,6 @@ class Kind:
 class Genre:
     id: str
     name: str
-    is_parent: bool = False
-    kind: Optional[str] = None
-    children: List[Genre] = field(default_factory=list)
-    ancestors: List[Genre] = field(default_factory=list)
 
 
 @dataclass
@@ -75,7 +72,6 @@ class Title:
     artist: Optional[str] = None
     borrowed: bool = False
     due: Optional[datetime] = None
-    percent_complete: float = 0
     badge: Optional[str] = None
     episodes: List[Episode] = field(default_factory=list)
     borrowable: bool = False
@@ -94,9 +90,9 @@ class Title:
     user_stars: Optional[int] = None  # this user's own rating, 1-5
     season: Optional[int] = None  # for TV: which season this title is, when the service says
     bingepass_type: Optional[str] = None  # BINGEPASS_INCLUDED or BINGEPASS_PARTNER
-    external_url: Optional[str] = None
     included: List[Title] = field(default_factory=list)  # an INCLUDED BingePass's movies and seasons
     content_kinds: List[str] = field(default_factory=list)  # kinds its genres belong to, when known
+    bonus: bool = False  # a bonus borrow: doesn't use one of the monthly borrows
 
 
 @dataclass
@@ -126,9 +122,7 @@ class TitlePage:
 
 @dataclass
 class BorrowLimits:
-    remaining: Optional[int] = None
     message: str = ''
-    instant_remaining: Optional[int] = None
     instant_message: str = ''
     flex_remaining: Optional[int] = None
     flex_message: str = ''
@@ -138,14 +132,16 @@ class BorrowLimits:
 class Stream:
     """What a player needs to play one borrowed item."""
     url: str
-    manifest_type: str  # 'mpd' or 'hls'
-    drm: Optional[str] = None  # key system, e.g. 'com.widevine.alpha'
+    manifest_type: str  # 'mpd' (DASH)
+    drm: Optional[str] = None  # key system, e.g. WIDEVINE
     license_url: Optional[str] = None
     license_headers: Dict[str, str] = field(default_factory=dict)
 
 
 class LibraryDAO(ABC):
-    """Ids passed in and out are opaque strings; callers only hand them back to the same DAO."""
+    """Ids passed in and out are opaque strings; callers only hand them back to the same DAO.
+
+    A page_size of None asks for the largest page the backend serves."""
 
     def __init__(self, session_token: Optional[str] = None, device_id: Optional[str] = None):
         """device_id: a stable, random per-install id, used where the service personalizes by device."""
@@ -163,24 +159,21 @@ class LibraryDAO(ABC):
     def genres(self, kind_id: str) -> List[Genre]: ...
 
     @abstractmethod
-    def genre(self, genre_id: str) -> Genre: ...
-
-    @abstractmethod
     def borrowed(self) -> List[Title]: ...
 
     @abstractmethod
     def borrow_limits(self) -> BorrowLimits: ...
 
     @abstractmethod
-    def bingepass_titles(self, page: int = 1, page_size: int = 50) -> TitlePage: ...
+    def bingepass_titles(self, page: int = 1, page_size: Optional[int] = None) -> TitlePage: ...
 
     @abstractmethod
-    def genre_titles(self, genre_id: str, page: int = 1, page_size: int = 50,
+    def genre_titles(self, genre_id: str, page: int = 1, page_size: Optional[int] = None,
                      kind_id: Optional[str] = None) -> TitlePage:
         """kind_id, when given, keeps only titles of that kind (genres and collections can mix kinds)."""
 
     @abstractmethod
-    def search(self, query: str, kind_id: str, page: int = 1, page_size: int = 50) -> TitlePage: ...
+    def search(self, query: str, kind_id: str, page: int = 1, page_size: Optional[int] = None) -> TitlePage: ...
 
     @abstractmethod
     def featured_titles(self, kind_id: str) -> List[Title]: ...
@@ -196,15 +189,19 @@ class LibraryDAO(ABC):
     def collections(self, kind_id: str) -> List[Collection]: ...
 
     @abstractmethod
-    def collection_titles(self, collection_id: str, page: int = 1, page_size: int = 50,
+    def collection_titles(self, collection_id: str, page: int = 1, page_size: Optional[int] = None,
                           kind_id: Optional[str] = None) -> TitlePage:
         """kind_id, when given, keeps only titles of that kind."""
 
     @abstractmethod
-    def series_titles(self, series_id: str, page: int = 1, page_size: int = 50) -> TitlePage: ...
+    def series_titles(self, series_id: str, page: int = 1, page_size: Optional[int] = None) -> TitlePage: ...
 
     @abstractmethod
     def related_titles(self, title_id: str) -> List[Title]: ...
+
+    @abstractmethod
+    def bonus_titles(self, kind_ids: List[str]) -> List[Title]:
+        """The library's current bonus borrows (a monthly promotion) of the given kinds."""
 
     @abstractmethod
     def history(self, page: int = 1, page_size: int = 50) -> List[HistoryItem]:
