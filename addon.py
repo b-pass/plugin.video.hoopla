@@ -3,6 +3,7 @@
 import re
 import sys
 import uuid
+from datetime import datetime, timezone
 from urllib.parse import parse_qsl, urlencode
 
 import xbmc
@@ -132,6 +133,23 @@ def set_art(item, image_url):
 
 def due_text(due):
     return f'Due {due.astimezone():%Y-%m-%d %H:%M}' if due else ''
+
+def time_left(due, now=None):
+    """'3 days left' / '5 hours left' until a loan ends. Days are rounded, so a fresh 3-day loan
+    reads 3 days, not 2."""
+    hours = (due - (now or datetime.now(timezone.utc))).total_seconds() / 3600
+    if hours <= 0:
+        return 'due now'
+    if hours < 24:
+        n = max(1, int(hours))
+        return f'{n} hour{"s" if n != 1 else ""} left'
+    n = max(1, round(hours / 24))
+    return f'{n} day{"s" if n != 1 else ""} left'
+
+def loan_due(t):
+    """When a borrowed title's loan ends. A TV season's episodes are borrowed one by one, so it's the
+    soonest-due borrowed episode."""
+    return t.due or min((e.due for e in t.episodes if e.borrowed and e.due), default=None)
 
 def return_menu(item_id, label):
     return ('Return', f'RunPlugin({plugin_url("return", id=item_id, label=label)})')
@@ -281,9 +299,14 @@ def list_row(row, kind_id):
     list_titles(dao_call(lambda d: fetch(d, kind_id)), RANKED)
 
 def list_borrowed():
+    titles = dao_call(lambda d: d.borrowed())
     # Borrowed BingePasses stay listed; they open as a folder of what they bundle.
-    list_titles(dao_call(lambda d: d.borrowed()), AZ, cache=False,
-                keep=lambda titles: playable(titles) + included_passes(titles))
+    shown = playable(titles) + included_passes(titles)
+    items = []
+    for t in shown:
+        due = loan_due(t)
+        items.append(catalog_entry(t, f'{t.title} ({time_left(due)})' if due else None))
+    end_directory(items, succeeded=titles is not None, content=content_for(shown), cache=False, sort=AZ)
 
 def list_history(page):
     entries = dao_call(lambda d: d.history(page=page, page_size=HISTORY_PAGE_SIZE))
