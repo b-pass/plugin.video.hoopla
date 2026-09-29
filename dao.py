@@ -176,6 +176,11 @@ class LibraryDAO(ABC):
     def search(self, query: str, kind_id: str, page: int = 1, page_size: Optional[int] = None) -> TitlePage: ...
 
     @abstractmethod
+    def top_rated(self, kind_id: str, genre_id: Optional[str] = None, page: int = 1,
+                  page_size: Optional[int] = None) -> TitlePage:
+        """Well-rated titles available now, most popular first; within one genre when given."""
+
+    @abstractmethod
     def featured_titles(self, kind_id: str) -> List[Title]: ...
 
     @abstractmethod

@@ -19,6 +19,9 @@ ART_URL = 'https://cover.hoopladigital.com/{}_270.jpeg'
 DASH_URL = 'https://dash.hoopladigital.com/{}/Manifest.mpd'
 DRMTODAY_WIDEVINE_URL = 'https://lic.drmtoday.com/license-proxy-widevine/cenc/?specConform=true'
 TIMEOUT = 30
+# "Top rated": search's star filter (a string; "4" means 4 stars and up), sorted by popularity. Most titles
+# are rated 4+, so popularity does most of the work; the filter keeps out popular but poorly rated ones.
+TOP_RATED_STARS = '4'
 # The most titles search will return per page (asking for more still returns 150).
 MAX_PAGE_SIZE = 150
 # The web client's audience for grown-up (non kids-mode) browsing.
@@ -782,6 +785,13 @@ class HooplaGraphQLDAO(LibraryDAO):
 
     def genre_titles(self, genre_id, page=1, page_size=None, kind_id=None):
         return self._search(_with_kind({'genreId': str(genre_id)}, kind_id), 'A_Z', page, page_size)
+
+    def top_rated(self, kind_id, genre_id=None, page=1, page_size=None):
+        criteria = {'kindId': str(kind_id), 'audience': AUDIENCE, 'availability': 'AVAILABLE_NOW',
+                    'stars': TOP_RATED_STARS}
+        if genre_id:
+            criteria['genreId'] = str(genre_id)
+        return self._search(criteria, 'POPULARITY', page, page_size)
 
     def search(self, query, kind_id, page=1, page_size=None):
         return self._search({'q': query, 'kindId': str(kind_id), 'audience': AUDIENCE}, 'RELEVANCE', page, page_size)

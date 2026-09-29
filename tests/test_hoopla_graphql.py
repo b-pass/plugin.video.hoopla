@@ -480,6 +480,25 @@ class BonusTest(unittest.TestCase):
         self.assertFalse(any(p['operationName'] == 'GetFilterSearchQuery' for p in sess.operations))
 
 
+class TopRatedTest(unittest.TestCase):
+    def test_criteria(self):
+        d, sess = make_dao()
+        d.top_rated('9')
+        d.top_rated('9', genre_id='1528335371', page=2, page_size=10)
+        sent = [(o['variables']['criteria'], o['variables']['sort']) for o in sess.operations]
+        base = {'kindId': '9', 'audience': 'ANY', 'availability': 'AVAILABLE_NOW', 'stars': '4'}
+        self.assertEqual(sent, [
+            (dict(base, pagination={'page': 1, 'pageSize': 150}), 'POPULARITY'),
+            (dict(base, genreId='1528335371', pagination={'page': 2, 'pageSize': 10}), 'POPULARITY'),
+        ])
+
+    def test_maps_titles(self):
+        d, _ = make_dao()
+        page = d.top_rated('7')
+        self.assertEqual(page.total, 87)
+        self.assertTrue(page.titles)
+
+
 class PageSizeTest(unittest.TestCase):
     def test_page_size_capped(self):
         d, sess = make_dao()

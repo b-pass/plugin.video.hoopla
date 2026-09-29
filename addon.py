@@ -114,6 +114,11 @@ def folder_item(label):
     item.getVideoInfoTag().setTitle(label)
     return item
 
+def pinned_folder(url, label):
+    item = folder_item(label)
+    item.setProperty('SpecialSort', 'top')  # stays first whatever the sort
+    return url, item, True
+
 def next_page(url):
     item = folder_item('Next page')
     item.setProperty('SpecialSort', 'bottom')  # stays last whatever the sort
@@ -219,9 +224,10 @@ def list_titles(titles, sort, keep=playable):
     shown = keep(titles)
     end_directory([catalog_entry(t) for t in shown], succeeded=titles is not None, content=content_for(shown), sort=sort)
 
-def list_page(result, next_url, sort, keep=playable):
+def list_page(result, next_url, sort, keep=playable, first=()):
+    """first: entries pinned above the titles, e.g. a genre's "Top rated" folder."""
     shown = keep(result.titles) if result else []
-    items = [catalog_entry(t) for t in shown]
+    items = list(first) + [catalog_entry(t) for t in shown]
     if result and result.has_more:
         items.append(next_page(next_url))
     end_directory(items, succeeded=result is not None, content=content_for(shown), sort=sort)
@@ -251,7 +257,10 @@ def list_main():
 def list_kind(kind_id, label, flex):
     """The menu for one kind (Movies, Television). It makes no requests itself."""
     rows = [r for r in ROWS if r != 'flex' or flex]
-    items = [(plugin_url('search', kind=kind_id, label=label), folder_item(f'Search {label}'), True)]
+    items = [
+        (plugin_url('search', kind=kind_id, label=label), folder_item(f'Search {label}'), True),
+        (plugin_url('top', kind=kind_id, page=1), folder_item('Top rated'), True),
+    ]
     items += [(plugin_url('row', row=r, kind=kind_id), folder_item(ROWS[r][0]), True) for r in rows]
     items += [
         (plugin_url('collections', kind=kind_id), folder_item('Collections'), True),
@@ -350,7 +359,16 @@ def list_genres(kind_id):
 
 def list_genre(genre_id, kind_id, page):
     result = dao_call(lambda d: d.genre_titles(genre_id, page=page, kind_id=kind_id))
-    list_page(result, plugin_url('genre', genre=genre_id, kind=kind_id, page=page + 1), TITLES)
+    top = [pinned_folder(plugin_url('top', kind=kind_id, genre=genre_id, page=1), 'Top rated')] if page == 1 and kind_id else []
+    list_page(result, plugin_url('genre', genre=genre_id, kind=kind_id, page=page + 1), TITLES, first=top)
+
+def list_top_rated(kind_id, genre_id, page):
+    """Well-rated titles, most popular first: for a whole kind, or within one genre."""
+    result = dao_call(lambda d: d.top_rated(kind_id, genre_id=genre_id, page=page))
+    params = dict(kind=kind_id, page=page + 1)
+    if genre_id:
+        params['genre'] = genre_id
+    list_page(result, plugin_url('top', **params), TITLES)
 
 def list_collections(kind_id):
     collections = dao_call(lambda d: d.collections(kind_id))
@@ -575,6 +593,8 @@ if __name__ == '__main__':
         list_kind(args['kind'], args.get('label', ''), args.get('flex') == '1')
     elif action == 'row':
         list_row(args['row'], args['kind'])
+    elif action == 'top':
+        list_top_rated(args['kind'], args.get('genre'), page)
     elif action == 'genres':
         list_genres(args['kind'])
     elif action == 'genre':
