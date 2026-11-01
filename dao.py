@@ -69,7 +69,7 @@ class Title:
     title: str
     kind: Optional[str] = None
     image_url: Optional[str] = None
-    artist: Optional[str] = None
+    artist: Optional[str] = None  # the lead performer
     borrowed: bool = False
     due: Optional[datetime] = None
     badge: Optional[str] = None
@@ -89,6 +89,7 @@ class Title:
     rating_count: int = 0
     user_stars: Optional[int] = None  # this user's own rating, 1-5
     season: Optional[int] = None  # for TV: which season this title is, when the service says
+    show: Optional[str] = None  # for TV: the show's name, without the season
     bingepass_type: Optional[str] = None  # BINGEPASS_INCLUDED or BINGEPASS_PARTNER
     included: List[Title] = field(default_factory=list)  # an INCLUDED BingePass's movies and seasons
     content_kinds: List[str] = field(default_factory=list)  # kinds its genres belong to, when known

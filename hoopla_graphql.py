@@ -545,6 +545,16 @@ def _season(t):
     return int(m.group(1)) if m else None
 
 
+def _show(t):
+    """A TV title's show: its name without the season ("Show - Season 6" -> "Show"). The series name
+    isn't always there and sometimes drops a leading "The"."""
+    if _obj(t, 'kind').get('name') != TELEVISION:
+        return None
+    name = re.sub(r'[\s,:–-]*\b(?:Season|Series|Volume|Vol\.?)\s*\d+\s*$', '', t.get('title') or '',
+                  flags=re.IGNORECASE)
+    return ' '.join(name.split()) or None
+
+
 def _mpaa(rating):
     """Hoopla writes ratings compactly (PG13, NC17, TVMA, TVY7); NRA means none given."""
     if not rating or rating == 'NRA':
@@ -601,6 +611,7 @@ def _title(t):
         rating_count=int(_obj(t, 'titleRating').get('totalCount') or 0),
         user_stars=_obj(t, 'patronRating').get('stars') or None,
         season=_season(t),
+        show=_show(t),
         bingepass_type=BINGEPASS_TYPES.get(t.get('bingePassType')),
         included=_included(t, borrowed=bool(t.get('circulation')), borrowable=_is_borrowable(t)),
     )
@@ -620,10 +631,11 @@ def _included(pass_data, borrowed, borrowable):
         if kind == TELEVISION:
             season = str(first.get('season') or '')
             t.season = int(season) if season.isdigit() else _season(first)
+            t.show = _show(first)
             t.episodes = [Episode(
                 id=str(c.get('id') or ''),
                 number=int(c.get('episode') or 0),
-                title=re.sub(r'^\d+-', '', c.get('episodeTitle') or c.get('title') or ''),  # "01-All About Hats"
+                title=re.sub(r'^\d+\s*[-–]\s*', '', c.get('episodeTitle') or c.get('title') or ''),  # "01-All About Hats", "10–How ..."
                 synopsis=c.get('synopsis') or '',
                 image_url=_art(c.get('artKey')),
                 borrowed=borrowed,

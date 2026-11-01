@@ -295,6 +295,20 @@ class MappingTest(unittest.TestCase):
             d, _ = make_dao({'GetFetchTitleDetailQuery': FakeResponse(body)})
             self.assertEqual(d.title('2000002').season, season, name)
 
+    def test_show_from_title(self):
+        cases = {'Wild Kratts - Season 6': 'Wild Kratts', 'Wild Kratts': 'Wild Kratts', 'THE ARK  - Season 2': 'THE ARK',
+                 'Top Gear - Season 06': 'Top Gear', 'Some Show: Series 2': 'Some Show', 'Some Show, Vol. 3': 'Some Show',
+                 'Seasonal Specials': 'Seasonal Specials'}
+        for name, show in cases.items():
+            body = series_fixture()
+            body['data']['title']['title'] = name
+            d, _ = make_dao({'GetFetchTitleDetailQuery': FakeResponse(body)})
+            self.assertEqual(d.title('2000002').show, show, name)
+
+    def test_no_show_for_movies(self):
+        d, _ = make_dao()
+        self.assertIsNone(d.title('2000001').show)
+
     def test_list_metadata(self):
         hit = {'id': '1', 'title': 'Lucy', 'kind': {'name': 'MOVIE'}, 'year': 1958, 'seconds': 2100,
                'releaseDate': '2024-04-04T00:00:00.000Z', 'rating': 'NR', 'genres': [{'id': '9', 'name': 'Comedy'}]}
@@ -417,7 +431,14 @@ class BingePassTest(unittest.TestCase):
                          [('19269734', dao.TELEVISION, 26, 2), ('19269741', dao.TELEVISION, 24, 2)])
         ep = t.included[0].episodes[0]
         self.assertEqual((ep.id, ep.number, ep.title, ep.duration), ('19269734', 1, 'All About Hats', 1800))
+        self.assertEqual(t.included[0].show, "Mister Rogers' Neighborhood")
         self.assertTrue(ep.borrowable and not ep.borrowed, 'episodes share the pass loan state')
+
+    def test_included_episode_number_prefix(self):
+        body = fixture('GetFetchTitleDetailQuery_bingepass')
+        body['data']['title']['bundledContent'][1]['episodeTitle'] = '10\u2013How a Backhoe Digs'
+        d, _ = make_dao({'GetFetchTitleDetailQuery': FakeResponse(body)})
+        self.assertEqual(d.title('19268061').included[0].episodes[1].title, 'How a Backhoe Digs')
 
     def test_partner_pass(self):
         d, _ = make_dao({'GetFetchTitleDetailQuery': pass_response('GetFetchTitleDetailQuery_partner')})
