@@ -284,6 +284,22 @@ class MappingTest(unittest.TestCase):
         self.assertEqual((h.title.id, h.title.kind, h.episode_title), ('2000002', dao.TELEVISION, 'Pilot'))
         self.assertEqual(h.borrowed_date, datetime(2029, 12, 1, 12, tzinfo=timezone.utc))
 
+    def test_episode_number_prefix(self):
+        cases = {'04-WE WEREN\'T SUPPOSED': 'WE WEREN\'T SUPPOSED', '4 – Fourth': 'Fourth', 'Pilot': 'Pilot',
+                 '24-Hour Party': '24-Hour Party', '14-Fourteen': '14-Fourteen'}
+        for name, title in cases.items():
+            body = series_fixture()
+            episode = body['data']['title']['episodes'][0]
+            episode.update(episode=4, title=name)
+            d, _ = make_dao({'GetFetchTitleDetailQuery': FakeResponse(body)})
+            self.assertEqual(d.title('2000002').episodes[0].title, title, name)
+
+    def test_history_episode_number_prefix(self):
+        body = fixture('GetPatronHistoryQuery')
+        body['data']['history'][0]['episode']['title'] = '01-Pilot'
+        d, _ = make_dao({'GetPatronHistoryQuery': FakeResponse(body)})
+        self.assertEqual(d.history()[0].episode_title, 'Pilot')
+
     def test_season_from_title(self):
         d, _ = make_dao({'GetFetchTitleDetailQuery': FakeResponse(series_fixture())})
         self.assertEqual(d.title('2000002').season, 1)
@@ -436,7 +452,7 @@ class BingePassTest(unittest.TestCase):
 
     def test_included_episode_number_prefix(self):
         body = fixture('GetFetchTitleDetailQuery_bingepass')
-        body['data']['title']['bundledContent'][1]['episodeTitle'] = '10\u2013How a Backhoe Digs'
+        body['data']['title']['bundledContent'][1].update(episode=10, episodeTitle='10\u2013How a Backhoe Digs')
         d, _ = make_dao({'GetFetchTitleDetailQuery': FakeResponse(body)})
         self.assertEqual(d.title('19268061').included[0].episodes[1].title, 'How a Backhoe Digs')
 

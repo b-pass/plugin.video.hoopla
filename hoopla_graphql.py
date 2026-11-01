@@ -568,11 +568,19 @@ def _names(items):
     return [i['name'] for i in items or [] if i.get('name')]
 
 
+def _episode_title(title, number=None):
+    """Hoopla often starts an episode's title with its number: "04-We Weren't Supposed to Be Awake",
+    "10–How ...". Drop it. When the episode number is known, only that number is dropped, so a title
+    such as "24-Hour Party" keeps its own."""
+    number_re = rf'0*{int(number)}' if number else r'\d+'
+    return re.sub(rf'^{number_re}\s*[-–]\s*', '', title or '')
+
+
 def _episode(e):
     return Episode(
         id=str(e.get('id') or ''),
         number=int(e.get('episode') or 0),
-        title=e.get('title') or '',
+        title=_episode_title(e.get('title'), e.get('episode')),
         synopsis=e.get('synopsis') or '',
         image_url=_art(e.get('artKey')),
         borrowed=_is_borrowed(e),
@@ -635,7 +643,7 @@ def _included(pass_data, borrowed, borrowable):
             t.episodes = [Episode(
                 id=str(c.get('id') or ''),
                 number=int(c.get('episode') or 0),
-                title=re.sub(r'^\d+\s*[-–]\s*', '', c.get('episodeTitle') or c.get('title') or ''),  # "01-All About Hats", "10–How ..."
+                title=_episode_title(c.get('episodeTitle') or c.get('title'), c.get('episode')),
                 synopsis=c.get('synopsis') or '',
                 image_url=_art(c.get('artKey')),
                 borrowed=borrowed,
@@ -653,7 +661,7 @@ def _history_item(h):
     return HistoryItem(
         title=_title(_obj(h, 'title')),
         borrowed_date=_parse_time(h.get('borrowedDate')),
-        episode_title=_obj(h, 'episode').get('title'),
+        episode_title=_episode_title(_obj(h, 'episode').get('title')) or None,
     )
 
 
