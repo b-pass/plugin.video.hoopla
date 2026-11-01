@@ -182,23 +182,20 @@ def title_item(t, label=None, note=None):
     set_art(item, t.image_url)
     return item
 
-def set_episode_info(info, title, show, season, number):
-    info.setTitle(title)
-    info.setTvShowTitle(show)
-    info.setMediaType('episode')
-    # Kodi labels episodes "SxEE" and shows -1 for an unset season; an unnumbered title is the first season.
-    info.setSeason(season or 1)
-    if number:
-        info.setEpisode(number)
-        info.setSortEpisode(number)
-
 def episode_item(t, e):
     label = e.title if e.borrowed else f'{e.title} (not borrowed)'
     if e.number:
         label = f'{t.season or 1}x{e.number:02}. {label}'  # as Kodi's own episode lists read
     item = xbmcgui.ListItem(label=label)
     info = item.getVideoInfoTag()
-    set_episode_info(info, e.title, t.show or t.title, t.season, e.number)
+    info.setTitle(e.title)
+    info.setTvShowTitle(t.show or t.title)
+    info.setMediaType('episode')
+    # Kodi labels episodes "SxEE" and shows -1 for an unset season; an unnumbered title is the first season.
+    info.setSeason(t.season or 1)
+    if e.number:
+        info.setEpisode(e.number)
+        info.setSortEpisode(e.number)
     if e.duration:
         info.setDuration(e.duration)
     if t.year:
@@ -216,20 +213,12 @@ def episode_item(t, e):
     item.addContextMenuItems(menu)
     return item
 
-def show_params(show):
-    """URL params carrying an episode's (show, season, episode number) from borrowing on to playback."""
-    return dict(show=show[0], season_no=show[1] or 0, episode_no=show[2] or 0) if show else {}
-
-def play_entry(item, borrowed, label, show=None, **params):
-    """A (url, item, is_folder) entry for something to watch. A borrowed item plays directly. Anything
-    else runs the borrow dialog first, and only then starts playback; cancelling a playable item's
-    resolve would make Kodi show "Playback failed".
-    label, show: what playback started after borrowing shows, which has no list item to take them from.
-    show is a (show, season, episode number) tuple for an episode."""
-    if borrowed:
-        item.setProperty('IsPlayable', 'true')
-        return plugin_url('play', **params), item, False
-    return plugin_url('borrow', label=label, **show_params(show), **params), item, False
+def play_entry(item, **params):
+    """A (url, item, is_folder) entry for something to watch. Its URL is the same whether or not it is
+    borrowed, since a listing can be clicked long after it was made (Kodi's and Center Stage's caches,
+    favourites): play() offers to borrow when it has to."""
+    item.setProperty('IsPlayable', 'true')
+    return plugin_url('play', **params), item, False
 
 def catalog_entry(t, label=None, note=None):
     """A (url, item, is_folder) entry for a title from any listing."""
@@ -239,7 +228,7 @@ def catalog_entry(t, label=None, note=None):
     if t.kind == dao.TELEVISION:
         return plugin_url('episodes', title=t.id), item, True
     if t.kind == dao.MOVIE:
-        return play_entry(item, t.borrowed, t.title, title=t.id)
+        return play_entry(item, title=t.id)
     if t.kind == dao.BINGEPASS:
         return plugin_url('pass', title=t.id), item, True
     return plugin_url('unsupported'), item, False
@@ -329,9 +318,7 @@ def list_history(page):
 def list_season(season, bingepass_id=None):
     """A season's episodes. bingepass_id: the pass the season was opened through, whose loan plays them."""
     params = {'bingepass': bingepass_id} if bingepass_id else {}
-    show = season.show or season.title if season else None
-    items = [play_entry(episode_item(season, e), e.borrowed, e.title, (show, season.season, e.number),
-                        title=season.id, episode=e.id, **params)
+    items = [play_entry(episode_item(season, e), title=season.id, episode=e.id, **params)
              for e in season.episodes] if season else []
     end_directory(items, succeeded=season is not None, content='episodes', sort=EPISODES, cache=False)
 
@@ -373,7 +360,7 @@ def list_pass(pass_id):
         if x.kind == dao.TELEVISION:
             items.append((plugin_url('pass', title=pass_id, season=x.id), item, True))
         else:
-            items.append(play_entry(item, x.borrowed, x.title, title=x.id, bingepass=pass_id))
+            items.append(play_entry(item, title=x.id, bingepass=pass_id))
     end_directory(items, content=content_for(included), sort=SEASONS)
 
 def list_genres(kind_id):
@@ -454,14 +441,14 @@ def confirm_borrow(t, name):
 
 def borrow_for_play(title_id, episode_id, bingepass_id=None):
     """Offer to borrow an item the user tried to play (or the BingePass it came from).
-    Returns True once it is borrowed."""
+    Returns True once it is borrowed, or if it already was."""
     t = dao_call(lambda d: d.title(bingepass_id or title_id))
     if t is None:
         return False
     e = next((e for e in t.episodes if e.id == episode_id), None) if episode_id and not bingepass_id else None
     target = e or t
     name = f'{t.title}: {e.title}' if e else t.title
-    if target.borrowed:  # e.g. borrowed elsewhere since the listing was made
+    if target.borrowed:  # e.g. borrowed elsewhere since the stream was asked for
         log('Already borrowed: "{}" ({})', name, target.id)
         return True
     if not target.borrowable:
@@ -535,11 +522,10 @@ def set_drm_properties(item, stream):
         item.setProperty('inputstream.adaptive.license_type', stream.drm)
         item.setProperty('inputstream.adaptive.license_key', f'{stream.license_url}|{headers}|R{{SSM}}|')
 
-def play(title_id, episode_id=None, bingepass_id=None, label=None, inputstream=None, show=None):
-    """inputstream: set when borrow_then_play() has already run inputstream_ready().
-    label, show: set when started by borrow_then_play(); show is (show, season, episode number) for an episode."""
-    if not inputstream:
-        inputstream = inputstream_ready()
+def play(title_id, episode_id=None, bingepass_id=None):
+    """Resolve a playable item, offering to borrow it first if it isn't borrowed. Declining ends in
+    Kodi's "Playback failed": the accepted price of one URL per item (see play_entry)."""
+    inputstream = inputstream_ready()  # before borrowing: no point spending a borrow on something Kodi can't play
     if not inputstream:
         xbmcplugin.setResolvedUrl(HANDLE, False, xbmcgui.ListItem(offscreen=True))
         return
@@ -552,7 +538,8 @@ def play(title_id, episode_id=None, bingepass_id=None, label=None, inputstream=N
 
     log('Play title {} episode {} bingepass {}', title_id, episode_id, bingepass_id)
     stream = dao_call(get_stream)
-    if stream is NOT_BORROWED:
+    offered_borrow = stream is NOT_BORROWED
+    if offered_borrow:
         log('Not borrowed yet, offering to borrow')
         stream = dao_call(get_stream) if borrow_for_play(title_id, episode_id, bingepass_id) else None
     if stream is None or stream is NOT_BORROWED:
@@ -562,30 +549,12 @@ def play(title_id, episode_id=None, bingepass_id=None, label=None, inputstream=N
     log('Playing {} ({}, {})', stream.url, stream.manifest_type, stream.drm)  # the manifest URL is public
 
     item = xbmcgui.ListItem(path=stream.url, offscreen=True)
-    if label:  # started with PlayMedia (after borrowing) there's no list item for Kodi to take metadata from
-        item.setLabel(label)
-        info = item.getVideoInfoTag()
-        if show:
-            set_episode_info(info, label, *show)
-        else:
-            info.setTitle(label)
-            info.setMediaType('movie')
     item.setMimeType('application/dash+xml')
     item.setContentLookup(False)
     item.setProperty('inputstream', inputstream)
     set_drm_properties(item, stream)
     xbmcplugin.setResolvedUrl(HANDLE, True, item)
-
-def borrow_then_play(title_id, episode_id, bingepass_id, label, show=None):
-    """Clicked an item that isn't borrowed: ask first, and only start playback once it's borrowed."""
-    inputstream = inputstream_ready()  # no point spending a borrow on something Kodi can't play
-    if inputstream and borrow_for_play(title_id, episode_id, bingepass_id):
-        params = dict(title=title_id, label=label, inputstream=inputstream, **show_params(show))
-        if episode_id:
-            params['episode'] = episode_id
-        if bingepass_id:
-            params['bingepass'] = bingepass_id
-        xbmc.executebuiltin(f'PlayMedia({plugin_url("play", **params)})')
+    if offered_borrow:
         xbmc.executebuiltin('Container.Refresh')  # the item now shows as borrowed
 
 def return_item(item_id, label):
@@ -610,8 +579,6 @@ if __name__ == '__main__':
         args = {}
 
     action = args.get('action', None)
-    # see show_params()
-    show = (args['show'], int(args.get('season_no') or 0), int(args.get('episode_no') or 0)) if 'show' in args else None
     page = int(args.get('page', 1))
     if not action:
         list_main()
@@ -650,9 +617,7 @@ if __name__ == '__main__':
     elif action == 'login':
         force_login()
     elif action == 'play':
-        play(args['title'], args.get('episode'), args.get('bingepass'), args.get('label'), args.get('inputstream'), show)
-    elif action == 'borrow':
-        borrow_then_play(args['title'], args.get('episode'), args.get('bingepass'), args.get('label', ''), show)
+        play(args['title'], args.get('episode'), args.get('bingepass'))
     elif action == 'pass':
         if 'season' in args:
             list_pass_season(args['title'], args['season'])
