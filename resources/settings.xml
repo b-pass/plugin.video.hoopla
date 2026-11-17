@@ -2,31 +2,15 @@
 <settings version="1">
     <section id="plugin.video.hoopla">
         <category id="account" label="16000" help="">
-            <group id="login">
-                <setting id="username" type="string" label="1048" help="">
+            <group id="users">
+                <setting id="manage_users" type="action" label="30010" help="30011">
                     <level>0</level>
-                    <default/>
+                    <data>RunPlugin(plugin://plugin.video.hoopla/?action=users)</data>
                     <constraints>
                         <allowempty>true</allowempty>
                     </constraints>
-                    <control type="edit" format="string">
-                        <heading>1048</heading>
-                    </control>
-                </setting>
-                <setting id="password" type="string" label="733" help="">
-                    <level>0</level>
-                    <default/>
-                    <constraints>
-                        <allowempty>true</allowempty>
-                    </constraints>
-                    <dependencies>
-                        <dependency type="enable">
-                            <condition operator="!is" setting="username"></condition>
-                        </dependency>
-                    </dependencies>
-                    <control type="edit" format="string">
-                        <heading>733</heading>
-                        <hidden>true</hidden>
+                    <control type="button" format="action">
+                        <close>true</close>
                     </control>
                 </setting>
             </group>
@@ -38,7 +22,27 @@
                 </setting>
             </group>
             <group id="internal">
-                <!-- Written by the addon: the Hoopla session token, and a random per-install device id. -->
+                <!-- Written by the addon: a random per-install device id. username, password and authorization
+                     (the session token) held the single login of earlier versions; the addon moves them
+                     into accounts.json in its userdata and blanks them. -->
+                <setting id="username" type="string" help="">
+                    <level>4</level>
+                    <default/>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <visible>false</visible>
+                    <control type="edit" format="string"/>
+                </setting>
+                <setting id="password" type="string" help="">
+                    <level>4</level>
+                    <default/>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <visible>false</visible>
+                    <control type="edit" format="string"/>
+                </setting>
                 <setting id="authorization" type="string" help="">
                     <level>4</level>
                     <default/>

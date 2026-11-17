@@ -18,3 +18,11 @@ msgstr ""
 msgctxt "#30003"
 msgid "Skip the warning when InputStream Helper can't confirm Widevine is installed, e.g. on devices that provide Widevine some other way."
 msgstr ""
+
+msgctxt "#30010"
+msgid "Manage users"
+msgstr ""
+
+msgctxt "#30011"
+msgid "Switch between, add, rename or remove Hoopla logins. The main menu shows who is logged in."
+msgstr ""

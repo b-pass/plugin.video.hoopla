@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import os
 import re
 import sys
 import uuid
@@ -9,16 +10,20 @@ import xbmc
 import xbmcaddon
 import xbmcgui
 import xbmcplugin
+import xbmcvfs
 
 import dao
+from accounts import Account, AccountStore, migrate_legacy
 from hoopla_graphql import HooplaGraphQLDAO as BackendDAO
-from presentation import (VIDEO_KINDS, borrow_allowance, by_season, content_for, due_text, included_passes, loan_due,
-                          paragraphs, playable, time_left, without_downloads)
+from presentation import (VIDEO_KINDS, borrow_allowance, by_season, content_for, default_user_name, due_text,
+                          included_passes, loan_due, out_of_borrows, paragraphs, playable, time_left,
+                          without_downloads)
 
 PLUGIN_BASE = ''
 HANDLE = -1
 HISTORY_PAGE_SIZE = 50  # history's own limit is unknown, and a short page is how we detect the end
 NOT_BORROWED = object()
+BORROW, SWITCH = 'borrow', 'switch'  # the borrow dialog's choices
 ROWS = {  # row -> (label, DAO call)
     'featured': ('Featured', lambda d, kind: d.featured_titles(kind)),
     'popular': ('Popular', lambda d, kind: d.popular_titles(kind)),
@@ -38,8 +43,17 @@ def plugin_url(action, **params):
 def notify(msg):
     xbmcgui.Dialog().notification('Hoopla', msg, xbmcgui.NOTIFICATION_INFO)
 
-def credentials():
-    return addon.getSetting('username'), addon.getSetting('password')
+def store():
+    """The stored users (accounts.json in the addon's userdata). The first run after an upgrade moves the
+    single login the settings used to hold into it."""
+    s = AccountStore(os.path.join(xbmcvfs.translatePath(addon.getAddonInfo('profile')), 'accounts.json'))
+    username = addon.getSetting('username')
+    if migrate_legacy(s, username, addon.getSetting('password'), addon.getSetting('authorization'),
+                      default_user_name(username)):
+        log('Moved the saved login into the user list')
+        for key in ('username', 'password', 'authorization'):
+            addon.setSetting(key, '')
+    return s
 
 def device_id():
     """A random id for this Kodi install, created on first use and kept in the (hidden) addon settings."""
@@ -49,36 +63,59 @@ def device_id():
         addon.setSetting('device_id', value)
     return value
 
-# Log events, never credentials or tokens: Kodi logs get shared when people ask for help.
-def do_login(d):
-    username, password = credentials()
-    if not username or not password:
-        log('Login: no username/password set, opening settings')
-        addon.openSettings()
-        username, password = credentials()
-        if not username or not password:
-            log('Login: still no username/password, giving up', level=xbmc.LOGWARNING)
-            return False
+# Log events, never credentials, tokens or user names: Kodi logs get shared when people ask for help.
+def do_login(d, s):
+    """Log the current user in again, saving their new token. With no users yet, ask for one."""
+    account = s.current()
+    if account is None:
+        log('Login: no users yet, asking for one')
+        return add_user(d, s) is not None
     log('Logging in')
-    addon.setSetting('authorization', d.login(username, password))
+    s.set_token(account.username, d.login(account.username, account.password))
     log('Login OK')
     return True
 
+def add_user(d=None, s=None):
+    """Ask for a login, check it, then ask what to call the user, who becomes the current one.
+    Returns the Account, or None if the user cancelled. A failed login raises AuthError."""
+    s = s or store()
+    d = d or BackendDAO(device_id=device_id())
+    dialog = xbmcgui.Dialog()
+    username = dialog.input('Hoopla username (email)').strip()
+    if not username:
+        return None
+    password = dialog.input('Hoopla password', option=xbmcgui.ALPHANUM_HIDE_INPUT)
+    if not password:
+        return None
+    log('Adding a user: logging in')
+    token = d.login(username, password)
+    log('Login OK')
+    existing = s.find(username)  # adding a user again updates their password
+    suggested = existing.label if existing else default_user_name(username)
+    name = dialog.input('Name to show for this user', defaultt=suggested).strip() or suggested
+    s.add(Account(username, password, name=name, token=token))
+    notify(f'Logged in as {name}')
+    return s.current()
+
 def dao_call(fn):
-    d = BackendDAO(session_token=addon.getSetting('authorization') or None, device_id=device_id())
+    s = store()
+    account = s.current()
+    d = BackendDAO(session_token=(account.token if account else None) or None, device_id=device_id())
     try:
         try:
             return fn(d)
         except dao.AuthError:
             log('Session rejected, logging in')
-            addon.setSetting('authorization', '')
-            if not do_login(d):
+            if not do_login(d, s):
                 return None
             return fn(d)
     except dao.AuthError as e:
         log('Login failed: {}', e, level=xbmc.LOGERROR)
-        addon.setSetting('authorization', '')
-        xbmcgui.Dialog().ok('Login Failed', str(e))
+        account = s.current()
+        if account:
+            s.set_token(account.username, '')
+        hint = f'\n\nTo fix {account.label}\'s password, add the user again from the main menu.' if account else ''
+        xbmcgui.Dialog().ok('Login Failed', str(e) + hint)
     except dao.LibraryError as e:
         log('API failure: {}', e, level=xbmc.LOGERROR)
         xbmcgui.Dialog().ok('Hoopla API Failure', str(e))
@@ -245,6 +282,13 @@ def list_page(result, next_url, sort, keep=playable, first=()):
         items.append(next_page(next_url))
     end_directory(items, succeeded=result is not None, content=content_for(shown), sort=sort)
 
+def user_entry():
+    """The main menu's first item: who is logged in, opening the user menu."""
+    account = store().current()
+    item = folder_item(f'User: {account.label}' if account else 'Add user...')
+    item.setProperty('SpecialSort', 'top')
+    return plugin_url('users'), item, False
+
 def list_main():
     result = dao_call(lambda d: (d.borrow_limits(), d.kinds()))
     limits, kinds = result if result else (None, [])
@@ -254,6 +298,7 @@ def list_main():
     label = f'Borrowed - {limits.message}' if limits and limits.message else 'Borrowed'
     video_kinds = ','.join(k.id for k in kinds if k.name in VIDEO_KINDS)
     items = [
+        user_entry(),  # after the calls above, which may have added the first user
         (plugin_url('borrowed'), folder_item(label), True),
         (plugin_url('bonus', kinds=video_kinds), folder_item('Bonus Borrows'), True),
         #(plugin_url('history', page=1), folder_item('Borrowing history'), True),
@@ -263,9 +308,10 @@ def list_main():
         if k.name in VIDEO_KINDS:
             items.append((plugin_url('kind', kind=k.id, label=k.label, flex=flex), folder_item(k.label), True))
     # Checked after the calls above, which log in on their own when they can.
-    if not addon.getSetting('authorization'):
+    account = store().current()
+    if account and not account.token:
         items.append((plugin_url('login'), xbmcgui.ListItem('Log in'), False))
-    end_directory(items, cache=False)  # the Borrowed label shows the current allowance
+    end_directory(items, cache=False)  # the user and the Borrowed label change
 
 def list_kind(kind_id, label, flex):
     """The menu for one kind (Movies, Television). It makes no requests itself."""
@@ -425,23 +471,102 @@ def rate(title_id, label, current):
 
 def force_login():
     log('Login requested from the menu')
-    addon.setSetting('authorization', '')
+    s = store()
+    account = s.current()
+    if account:
+        s.set_token(account.username, '')
     try:
-        if do_login(BackendDAO(device_id=device_id())):
-            notify('Logged in')
+        if do_login(BackendDAO(device_id=device_id()), s) and account:
+            notify(f'Logged in as {account.label}')
+            xbmc.executebuiltin('Container.Refresh')
     except dao.LibraryError as e:
         log('Login failed: {}', e, level=xbmc.LOGERROR)
         xbmcgui.Dialog().ok('Login Failed', str(e))
 
+def switch_to(s, account):
+    log('Switching user')
+    s.select(account.username)
+    notify(f'Switched to {account.label}')
+
+def choose_user(heading, accounts):
+    picked = xbmcgui.Dialog().select(heading, [a.label for a in accounts])
+    return accounts[picked] if picked >= 0 else None
+
+def pick_user():
+    """Switch to another stored user, picked from a list. Returns True once switched."""
+    s = store()
+    account = choose_user('Switch to', s.others())
+    if account:
+        switch_to(s, account)
+    return account is not None
+
+def manage_users():
+    """The user menu, from the main menu or the settings: switch, add, rename or remove a user."""
+    s = store()
+    current = s.current()
+    labels = [f'[B]{a.label}[/B] (current)' if a is current else a.label for a in s.accounts]
+    actions = [('add', 'Add user...')]
+    if s.accounts:
+        actions += [('rename', 'Rename user...'), ('remove', 'Remove user...')]
+    picked = xbmcgui.Dialog().select('Hoopla users', labels + [label for _, label in actions],
+                                     preselect=s.accounts.index(current) if current else -1)
+    if picked < 0:
+        return
+    if picked < len(s.accounts):
+        if s.accounts[picked] is not current:
+            switch_to(s, s.accounts[picked])
+            xbmc.executebuiltin('Container.Refresh')
+        return
+    what = actions[picked - len(s.accounts)][0]
+    if what == 'add':
+        try:
+            changed = add_user(s=s) is not None
+        except dao.LibraryError as e:
+            log('Adding a user failed: {}', e, level=xbmc.LOGERROR)
+            xbmcgui.Dialog().ok('Login Failed', str(e))
+            return
+    elif what == 'rename':
+        account = choose_user('Rename which user?', s.accounts)
+        name = xbmcgui.Dialog().input('Name to show for this user', defaultt=account.label).strip() if account else ''
+        changed = bool(name)
+        if changed:
+            s.set_name(account.username, name)
+    else:
+        account = choose_user('Remove which user?', s.accounts)
+        changed = bool(account) and xbmcgui.Dialog().yesno(
+            'Remove user?', f'Forget {account.label}\'s Hoopla login on this Kodi?', nolabel='Cancel', yeslabel='Remove')
+        if changed:
+            log('Removing a user')
+            s.remove(account.username)
+            notify(f'Removed {account.label}')
+    if changed:
+        xbmc.executebuiltin('Container.Refresh')
+
 def confirm_borrow(t, name):
+    """Ask before borrowing, naming the user it'll be borrowed by. Returns BORROW, SWITCH (to another
+    user, offered whenever there is one) or None."""
+    s = store()
+    account = s.current()
+    switchable = len(s.accounts) > 1
     limits = None if t.bonus else dao_call(lambda d: d.borrow_limits())  # a bonus borrow doesn't use them
-    lines = [name, borrow_allowance(t, limits), without_downloads(t.lending_message)]
-    return xbmcgui.Dialog().yesno('Borrow from Hoopla?', '\n'.join(s for s in lines if s),
-                                  nolabel='Cancel', yeslabel='Borrow')
+    allowance = borrow_allowance(t, limits, account.label if account else None)
+    dialog = xbmcgui.Dialog()
+    if out_of_borrows(t, limits):
+        message = '\n'.join(x for x in (name, allowance) if x)
+        if switchable:
+            return SWITCH if dialog.yesno('No borrows left', message, nolabel='Cancel', yeslabel='Switch user') else None
+        dialog.ok('No borrows left', message)
+        return None
+    message = '\n'.join(x for x in (name, allowance, without_downloads(t.lending_message)) if x)
+    if switchable:
+        picked = dialog.yesnocustom('Borrow from Hoopla?', message, 'Switch user', nolabel='Cancel', yeslabel='Borrow')
+        return {1: BORROW, 2: SWITCH}.get(picked)
+    return BORROW if dialog.yesno('Borrow from Hoopla?', message, nolabel='Cancel', yeslabel='Borrow') else None
 
 def borrow_for_play(title_id, episode_id, bingepass_id=None):
     """Offer to borrow an item the user tried to play (or the BingePass it came from).
-    Returns True once it is borrowed, or if it already was."""
+    Returns True once it is borrowed (or if it already was), SWITCH when the user asked to switch users
+    instead, else False."""
     t = dao_call(lambda d: d.title(bingepass_id or title_id))
     if t is None:
         return False
@@ -453,9 +578,15 @@ def borrow_for_play(title_id, episode_id, bingepass_id=None):
         return True
     if not target.borrowable:
         log('Not borrowable: "{}" ({})', name, target.id, level=xbmc.LOGWARNING)
-        xbmcgui.Dialog().ok('Hoopla', 'This title is not available to borrow right now.')
+        message = f'{name}\nThis title is not available to borrow right now.'
+        if len(store().accounts) > 1:
+            return SWITCH if xbmcgui.Dialog().yesno('Hoopla', message, nolabel='Cancel', yeslabel='Switch user') else False
+        xbmcgui.Dialog().ok('Hoopla', message)
         return False
-    if not confirm_borrow(t, name):
+    choice = confirm_borrow(t, name)
+    if choice == SWITCH:
+        return SWITCH
+    if choice != BORROW:
         log('Borrow declined: "{}" ({})', name, target.id)
         return False
     log('Borrowing "{}" ({})', name, target.id)
@@ -539,10 +670,18 @@ def play(title_id, episode_id=None, bingepass_id=None):
     log('Play title {} episode {} bingepass {}', title_id, episode_id, bingepass_id)
     stream = dao_call(get_stream)
     offered_borrow = stream is NOT_BORROWED
-    if offered_borrow:
+    while stream is NOT_BORROWED:
         log('Not borrowed yet, offering to borrow')
-        stream = dao_call(get_stream) if borrow_for_play(title_id, episode_id, bingepass_id) else None
-    if stream is None or stream is NOT_BORROWED:
+        outcome = borrow_for_play(title_id, episode_id, bingepass_id)
+        if outcome == SWITCH:
+            # The other user may have it already; if not, the borrow dialog comes back, naming them.
+            if pick_user():
+                stream = dao_call(get_stream)
+            continue
+        stream = dao_call(get_stream) if outcome else None
+        if stream is NOT_BORROWED:  # borrowed, yet still not playable: don't offer again
+            stream = None
+    if stream is None:
         log('Not playing title {} episode {}', title_id, episode_id, level=xbmc.LOGWARNING)
         xbmcplugin.setResolvedUrl(HANDLE, False, xbmcgui.ListItem())
         return
@@ -555,7 +694,7 @@ def play(title_id, episode_id=None, bingepass_id=None):
     set_drm_properties(item, stream)
     xbmcplugin.setResolvedUrl(HANDLE, True, item)
     if offered_borrow:
-        xbmc.executebuiltin('Container.Refresh')  # the item now shows as borrowed
+        xbmc.executebuiltin('Container.Refresh')  # the item now shows as borrowed, or another user is current
 
 def return_item(item_id, label):
     if not xbmcgui.Dialog().yesno('Return to Hoopla?', f'Return "{label}" now?', nolabel='Cancel', yeslabel='Return'):
@@ -616,6 +755,8 @@ if __name__ == '__main__':
         rate(args['title'], args.get('label', ''), int(args.get('stars') or 0))
     elif action == 'login':
         force_login()
+    elif action == 'users':
+        manage_users()
     elif action == 'play':
         play(args['title'], args.get('episode'), args.get('bingepass'))
     elif action == 'pass':

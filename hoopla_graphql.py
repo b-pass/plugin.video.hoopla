@@ -784,6 +784,8 @@ class HooplaGraphQLDAO(LibraryDAO):
         r = _obj(self._query('GetRemainingBorrowsQuery', REMAINING_BORROWS_QUERY), 'remainingBorrows')
         return BorrowLimits(
             message=r.get('borrowsRemainingMessage') or '',
+            remaining=r.get('borrowsRemaining'),
+            instant_remaining=r.get('instantBorrowsRemaining'),
             instant_message=r.get('instantBorrowsRemainingMessage') or '',
             flex_remaining=r.get('flexBorrowsRemaining'),
             flex_message=r.get('flexBorrowsRemainingMessage') or '',

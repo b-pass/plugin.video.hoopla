@@ -63,17 +63,49 @@ def included_passes(titles):
             and (not t.content_kinds or any(k in VIDEO_KINDS for k in t.content_kinds))]
 
 
-BONUS_TEXT = "Bonus Borrow: this won't use one of your monthly borrows."
+def possessive(name):
+    return f"{name}'" if name.endswith('s') else f"{name}'s"
 
 
-def borrow_allowance(t, limits):
-    """The borrow dialog's line about the user's allowance. A bonus borrow doesn't use it."""
+def bonus_text(user):
+    whose = f'{possessive(user)} monthly borrows' if user else 'your monthly borrows'
+    return f"Bonus Borrow: this won't use one of {whose}."
+
+
+def borrows_left(t, limits):
+    """How many borrows the user has left for this title this month, or None when the service doesn't say."""
+    if not limits:
+        return None
+    count = limits.flex_remaining if t.borrow_type == dao.FLEX else limits.instant_remaining
+    return limits.remaining if count is None else count
+
+
+def out_of_borrows(t, limits):
+    """True when borrowing this title needs a borrow the user hasn't got. A bonus borrow doesn't use one."""
+    return not t.bonus and borrows_left(t, limits) == 0
+
+
+def borrow_allowance(t, limits, user=None):
+    """The borrow dialog's line about the user's allowance, naming the user ("Kids has 3 borrows
+    remaining this month."). A bonus borrow doesn't use it."""
     if t.bonus:
-        return BONUS_TEXT
+        return bonus_text(user)
     if not limits:
         return ''
-    allowance = limits.flex_message if t.borrow_type == dao.FLEX else limits.instant_message
-    return allowance or limits.message
+    n = borrows_left(t, limits)
+    if n is None:  # no counts: the service's own message, which speaks to "you"
+        message = (limits.flex_message if t.borrow_type == dao.FLEX else limits.instant_message) or limits.message
+        return f'{user}: {message}' if user and message else message
+    who, has = (user, 'has') if user else ('You', 'have')
+    what = 'Flex borrow' if t.borrow_type == dao.FLEX else 'borrow'
+    if n <= 0:
+        return f'{who} {has} no {what}s left this month.'
+    return f'{who} {has} {n} {what}{"s" if n != 1 else ""} remaining this month.'
+
+
+def default_user_name(username):
+    """A user's suggested name: the part of their login email before the @."""
+    return (username or '').split('@')[0].strip() or username
 
 
 def without_downloads(text):

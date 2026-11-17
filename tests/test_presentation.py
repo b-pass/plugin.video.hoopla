@@ -2,7 +2,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 
 import dao
-from presentation import (BONUS_TEXT, borrow_allowance, by_season, content_for, included_passes, loan_due,
+from presentation import (borrow_allowance, default_user_name, out_of_borrows, by_season, content_for, included_passes, loan_due,
                           paragraphs, playable, time_left, without_downloads)
 
 NOW = datetime(2030, 1, 1, tzinfo=timezone.utc)
@@ -13,17 +13,47 @@ def title(kind=dao.MOVIE, **kw):
 
 
 class BorrowAllowanceTest(unittest.TestCase):
-    LIMITS = dao.BorrowLimits(message='all', instant_message='You have 5 Instant Borrows remaining this month.',
-                              flex_message='flex')
+    LIMITS = dao.BorrowLimits(message='all', remaining=5, instant_remaining=1, flex_remaining=3)
+    MESSAGES = dao.BorrowLimits(message='all', instant_message='You have 5 Instant Borrows remaining this month.',
+                                flex_message='flex')
 
     def test_bonus(self):
-        self.assertEqual(borrow_allowance(title(bonus=True), self.LIMITS), BONUS_TEXT)
-        self.assertEqual(borrow_allowance(title(bonus=True), None), BONUS_TEXT)
+        self.assertEqual(borrow_allowance(title(bonus=True), self.LIMITS, 'Kids'),
+                         "Bonus Borrow: this won't use one of Kids' monthly borrows.")
+        self.assertEqual(borrow_allowance(title(bonus=True), None, 'Sam'),
+                         "Bonus Borrow: this won't use one of Sam's monthly borrows.")
+        self.assertEqual(borrow_allowance(title(bonus=True), None),
+                         "Bonus Borrow: this won't use one of your monthly borrows.")
 
-    def test_instant_and_flex(self):
-        self.assertEqual(borrow_allowance(title(borrow_type=dao.INSTANT), self.LIMITS), self.LIMITS.instant_message)
-        self.assertEqual(borrow_allowance(title(borrow_type=dao.FLEX), self.LIMITS), 'flex')
-        self.assertEqual(borrow_allowance(title(), None), '')
+    def test_counts(self):
+        self.assertEqual(borrow_allowance(title(borrow_type=dao.INSTANT), self.LIMITS, 'Sam'),
+                         'Sam has 1 borrow remaining this month.')
+        self.assertEqual(borrow_allowance(title(borrow_type=dao.FLEX), self.LIMITS, 'Sam'),
+                         'Sam has 3 Flex borrows remaining this month.')
+        self.assertEqual(borrow_allowance(title(), dao.BorrowLimits(remaining=2), 'Sam'),
+                         'Sam has 2 borrows remaining this month.')
+        self.assertEqual(borrow_allowance(title(), dao.BorrowLimits(remaining=2)),
+                         'You have 2 borrows remaining this month.')
+        self.assertEqual(borrow_allowance(title(), dao.BorrowLimits(remaining=0, instant_remaining=0), 'Sam'),
+                         'Sam has no borrows left this month.')
+
+    def test_messages_without_counts(self):
+        self.assertEqual(borrow_allowance(title(borrow_type=dao.INSTANT), self.MESSAGES, 'Sam'),
+                         'Sam: ' + self.MESSAGES.instant_message)
+        self.assertEqual(borrow_allowance(title(borrow_type=dao.FLEX), self.MESSAGES), 'flex')
+        self.assertEqual(borrow_allowance(title(), None, 'Sam'), '')
+
+    def test_out_of_borrows(self):
+        empty = dao.BorrowLimits(remaining=0, instant_remaining=0, flex_remaining=2)
+        self.assertTrue(out_of_borrows(title(borrow_type=dao.INSTANT), empty))
+        self.assertFalse(out_of_borrows(title(borrow_type=dao.FLEX), empty))
+        self.assertFalse(out_of_borrows(title(bonus=True), empty))
+        self.assertFalse(out_of_borrows(title(), None))
+        self.assertFalse(out_of_borrows(title(), self.MESSAGES))
+
+    def test_default_user_name(self):
+        self.assertEqual(default_user_name('sam.smith@example.com'), 'sam.smith')
+        self.assertEqual(default_user_name('card123'), 'card123')
 
 
 class TimeLeftTest(unittest.TestCase):

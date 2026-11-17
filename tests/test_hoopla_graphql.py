@@ -192,6 +192,8 @@ class MappingTest(unittest.TestCase):
         d, _ = make_dao()
         lim = d.borrow_limits()
         self.assertEqual(lim.message, 'You can borrow 5 more titles this month.')
+        self.assertEqual(lim.remaining, 5)
+        self.assertEqual(lim.instant_remaining, 5)
         self.assertIsNone(lim.flex_remaining)
         self.assertEqual(lim.flex_message, '')
 

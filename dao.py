@@ -123,7 +123,10 @@ class TitlePage:
 
 @dataclass
 class BorrowLimits:
+    """Borrows left this month. A count is None when the service doesn't say (e.g. no Flex borrowing)."""
     message: str = ''
+    remaining: Optional[int] = None
+    instant_remaining: Optional[int] = None
     instant_message: str = ''
     flex_remaining: Optional[int] = None
     flex_message: str = ''
