@@ -29,13 +29,11 @@ library card.
 
 ## Installation
 
-1. Download this repository as a zip: **Code → Download ZIP**.
+1. Download `plugin.video.hoopla-<version>.zip` from the latest
+   [release](https://github.com/b-pass/plugin.video.hoopla/releases/latest).
 2. In Kodi, go to **Settings → Add-ons → Install from zip file** and pick the zip. You may first need
    to allow **Unknown sources** in Kodi's system settings.
 3. Open the addon's settings and enter your hoopla email and password.
-
-Kodi expects the folder inside the zip to be named `plugin.video.hoopla`. GitHub's zip names it
-`plugin.video.hoopla-main`, so rename the folder and re-zip it if Kodi refuses the zip.
 
 ## Usage notes
 
